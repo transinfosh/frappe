@@ -208,11 +208,7 @@ frappe.Application = class Application {
                 {
                     fieldname: "password",
                     fieldtype: "Password",
-                    label: __(
-                        "Please enter the password for: <b>{0}</b>",
-                        [email_id],
-                        "Email Account"
-                    ),
+                    label: __("Please enter the password for: <b>{0}</b>", [email_id], "Email Account"),
                     reqd: 1,
                 },
                 {
@@ -246,10 +242,7 @@ frappe.Application = class Application {
                     s.hide();
                     d.hide(); //hide waiting indication
                     if (!passed["message"]) {
-                        frappe.show_alert(
-                            { message: __("Login Failed please try again"), indicator: "error" },
-                            5
-                        );
+                        frappe.show_alert({ message: __("Login Failed please try again"), indicator: "error" }, 5);
                         me.email_password_prompt(email_account, user, i);
                     } else {
                         if (i + 1 < email_account.length) {
@@ -362,9 +355,7 @@ frappe.Application = class Application {
     make_page_container() {
         if ($("#body").length) {
             $(".splash").remove();
-            frappe.temp_container = $("<div id='temp-container' style='display: none;'>").appendTo(
-                "body"
-            );
+            frappe.temp_container = $("<div id='temp-container' style='display: none;'>").appendTo("body");
             frappe.container = new frappe.views.Container();
         }
     }
@@ -393,6 +384,11 @@ frappe.Application = class Application {
     }
     redirect_to_login() {
         window.location.href = `/login?redirect-to=${encodeURIComponent(
+            window.location.pathname + window.location.search
+        )}`;
+    }
+    redirect_to_license() {
+        window.location.href = `/license?redirect-to=${encodeURIComponent(
             window.location.pathname + window.location.search
         )}`;
     }
