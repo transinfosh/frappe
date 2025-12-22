@@ -46,8 +46,8 @@ def init_request(request, site, sites_path):
 	for before_request_task in frappe.get_hooks("before_request"):
 		frappe.call(before_request_task)
 
-	if request.path.startswith("/api") and request.path != "/api/method/ping":
-		check_license(request)
+	# if request.path.startswith("/api") and request.path != "/api/method/ping":
+	# 	check_license(request)
 
 
 def setup_read_only_mode():
