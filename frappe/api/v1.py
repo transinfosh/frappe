@@ -4,6 +4,7 @@ from werkzeug.routing import Rule
 
 import frappe
 from frappe import _
+from frappe.model.base_document import RESERVED_KEYWORDS
 from frappe.utils.data import sbool
 
 
@@ -50,6 +51,33 @@ def update_doc(doctype: str, id: str):
 	doc = frappe.get_doc(doctype, id, for_update=True)
 	if "flags" in data:
 		del data["flags"]
+
+	# 针对子表数据的更新处理
+	doc_table_fieldnames = doc._table_fieldnames
+	for key in doc_table_fieldnames:
+		if key not in data:
+			continue  # 如果请求数据中没有该子表，则跳过
+
+		exist_list_dict = {str(item.id): item for item in doc.get(key)}
+		for data_item in data.get(key):
+			data_item_id = data_item.get("id")
+			if data_item_id is None:
+				continue  # 新增的行，跳过后续更新逻辑
+
+			data_item_id = str(data_item_id)
+			if data_item_id not in exist_list_dict:
+				data_item.set("id", None)  # 如果ID不存在于现有列表中，设置为None以新增
+				continue
+
+			# 更新记录
+			exist_item = exist_list_dict.get(data_item_id)
+			for fieldname in list(data_item.keys()):  # 删除保留字字段
+				if fieldname in RESERVED_KEYWORDS:
+					del data_item[fieldname]
+
+			for fieldname, value in exist_item.as_dict().items():
+				if fieldname not in RESERVED_KEYWORDS and fieldname not in data_item:
+					data_item[fieldname] = value
 
 	doc.update(data)
 	doc.save()
