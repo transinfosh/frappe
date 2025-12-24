@@ -794,7 +794,7 @@
    "link_fieldname": "document_type"
   }
  ],
- "modified": "2025-05-21 21:58:59.947374",
+ "modified": "2025-12-24 14:39:36.893937",
  "modified_by": "Administrator",
  "module": "Core",
  "name": "DocType",
@@ -821,6 +821,10 @@
    "role": "Administrator",
    "share": 1,
    "write": 1
+  },
+  {
+   "read": 1,
+   "role": "All"
   }
  ],
  "route": "doctype",
