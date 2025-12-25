@@ -143,6 +143,7 @@ jinja = {
 		"frappe.utils.data.global_date_format",
 		"frappe.utils.markdown",
 		"frappe.website.utils.abs_url",
+		"frappe.utils.barcode.get_barcode",
 	],
 }
 
