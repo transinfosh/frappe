@@ -144,6 +144,7 @@ jinja = {
 		"frappe.utils.markdown",
 		"frappe.website.utils.abs_url",
 		"frappe.utils.barcode.get_barcode",
+		"frappe.utils.qrcode.get_qrcode",
 	],
 }
 
