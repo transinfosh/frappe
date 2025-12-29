@@ -70,7 +70,7 @@ begin
         return;
     end if;
 
-    select 102 as error, '行' || cast(t10.doc_idx as varchar(10)) || '，不允许修改完成数量（或删除行）'
+    select 102 as error, '行' || cast(t10.doc_idx as varchar(10)) || '，不允许修改完成数量（或删除行）。完成数量: ' || cast(t10.complete_qty as varchar(20)) || '，原完成数量: ' || cast(t10.ori_complete_qty as varchar(20))
     into v_error,v_error_message
     from temp_MT t10
     where t10.complete_qty is not null and t10.complete_qty <> t10.ori_complete_qty;
