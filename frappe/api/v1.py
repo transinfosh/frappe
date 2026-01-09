@@ -66,7 +66,7 @@ def update_doc(doctype: str, id: str):
 
 			data_item_id = str(data_item_id)
 			if data_item_id not in exist_list_dict:
-				data_item.set("id", None)  # 如果ID不存在于现有列表中，设置为None以新增
+				del data_item["id"]  # 如果ID不存在于现有列表中，设置为None以新增
 				continue
 
 			# 更新记录
