@@ -101,6 +101,7 @@ class CustomField(Document):
 		no_copy: DF.Check
 		non_negative: DF.Check
 		options: DF.SmallText | None
+		options_has_label: DF.Check
 		permlevel: DF.Int
 		placeholder: DF.Data | None
 		precision: DF.Literal["", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]

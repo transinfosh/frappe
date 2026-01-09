@@ -23,6 +23,7 @@
     "hide_seconds",
     "hide_days",
     "options",
+    "options_has_label",
     "sort_options",
     "fetch_from",
     "fetch_if_empty",
@@ -149,6 +150,14 @@
       "label": "Options",
       "oldfieldname": "options",
       "oldfieldtype": "Text"
+    },
+    {
+    "default": "0",
+    "depends_on": "eval: doc.fieldtype === 'Select'",
+    "description": "If checked, select options will split by first comma, the first part is value, and the second part is label.",
+    "fieldname": "options_has_label",
+    "fieldtype": "Check",
+    "label": "Options Has Label"
     },
     {
       "fieldname": "fetch_from",
