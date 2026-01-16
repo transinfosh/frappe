@@ -40,6 +40,7 @@ export default class Grid {
         this.is_grid = true;
         this.debounced_refresh = this.refresh.bind(this);
         this.debounced_refresh = frappe.utils.debounce(this.debounced_refresh, 100);
+        this.show_selected_rows_only = false;
     }
 
     get perm() {
@@ -612,6 +613,9 @@ export default class Grid {
             data = this.get_filtered_data();
         } else {
             data = this.frm ? this.frm.doc[this.df.fieldname] || [] : this.df.data || this.get_modal_data();
+            if (this.show_selected_rows_only) {
+                data = data.filter((d) => d.__checked);
+            }
         }
         return data;
     }
@@ -1218,5 +1222,14 @@ export default class Grid {
         this.docfields.find((d) => d.fieldname === fieldname)[property] = value;
 
         this.debounced_refresh();
+    }
+
+    toggle_show_selected_rows_only(show_selected_rows_only) {
+        if (show_selected_rows_only === true || show_selected_rows_only === false) {
+            this.show_selected_rows_only = show_selected_rows_only;
+        } else {
+            this.show_selected_rows_only = !this.show_selected_rows_only;
+        }
+        this.refresh();
     }
 }
