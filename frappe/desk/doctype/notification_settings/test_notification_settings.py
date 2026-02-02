@@ -6,4 +6,4 @@ from frappe.tests import IntegrationTestCase
 
 
 class TestNotificationSettings(IntegrationTestCase):
-	pass
+    pass

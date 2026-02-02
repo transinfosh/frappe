@@ -4,12 +4,12 @@
 "use strict";
 
 frappe.query_reports["{id}"] = {{
-	filters: [
-		// {{
-		// 	"fieldname": "my_filter",
-		// 	"label": __("My Filter"),
-		// 	"fieldtype": "Data",
-		// 	"reqd": 1,
-		// }},
-	],
+    filters: [
+        // {{
+        // 	"fieldname": "my_filter",
+        // 	"label": __("My Filter"),
+        // 	"fieldtype": "Data",
+        // 	"reqd": 1,
+        // }},
+    ],
 }};

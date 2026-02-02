@@ -1,14 +1,14 @@
 <div class="section-with-features">
-	{%- if title -%}
-	<h2 class="section-title">{{ title }}</h2>
-	{%- endif -%}
-	{%- if subtitle -%}
-	<p class="section-description">{{ subtitle }}</p>
-	{%- endif -%}
+    {%- if title -%}
+    <h2 class="section-title">{{ title }}</h2>
+    {%- endif -%}
+    {%- if subtitle -%}
+    <p class="section-description">{{ subtitle }}</p>
+    {%- endif -%}
 
-	<div class="section-features" data-columns="{{ columns or 3 }}">
-		{%- for video in videos -%}
-		<div class="section-feature">
+    <div class="section-features" data-columns="{{ columns or 3 }}">
+        {%- for video in videos -%}
+        <div class="section-feature">
             <div class="section-video-wrapper" data-youtube-id="{{ video.youtube_id }}">
                 <img class="video-thumbnail" src="https://i.ytimg.com/vi/{{ video.youtube_id }}/sddefault.jpg">
             </div>
@@ -19,6 +19,6 @@
             <p class="feature-content">{{ video.content }}</p>
             {%- endif -%}
     </div>
-		{%- endfor -%}
-	</div>
+        {%- endfor -%}
+    </div>
 </div>

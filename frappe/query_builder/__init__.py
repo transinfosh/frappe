@@ -5,11 +5,11 @@ from pypika.utils import ignore_copy
 
 from frappe.query_builder.terms import ParameterizedFunction, ParameterizedValueWrapper
 from frappe.query_builder.utils import (
-	Column,
-	DocType,
-	get_query,
-	get_query_builder,
-	patch_all,
+    Column,
+    DocType,
+    get_query,
+    get_query_builder,
+    patch_all,
 )
 
 pypika.terms.ValueWrapper = ParameterizedValueWrapper

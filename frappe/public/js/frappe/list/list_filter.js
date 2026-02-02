@@ -13,12 +13,12 @@ export default class ListFilter {
     make() {
         // init dom
         this.wrapper.html(`
-			<div class="input-area"></div>
-			<div class="sidebar-action">
-				<a class="saved-filters-preview">${__("Show Saved")}</a>
-			</div>
-			<div class="saved-filters"></div>
-		`);
+            <div class="input-area"></div>
+            <div class="sidebar-action">
+                <a class="saved-filters-preview">${__("Show Saved")}</a>
+            </div>
+            <div class="saved-filters"></div>
+        `);
 
         this.$input_area = this.wrapper.find(".input-area");
         this.$list_filters = this.wrapper.find(".list-filters");
@@ -78,9 +78,9 @@ export default class ListFilter {
         return `<div class="list-link filter-pill list-sidebar-button btn btn-default" data-id="${
             filter.id
         }">
-			<a class="ellipsis filter-name">${filter.filter_name}</a>
-			<a class="remove">${frappe.utils.icon("close")}</a>
-		</div>`;
+            <a class="ellipsis filter-name">${filter.filter_name}</a>
+            <a class="remove">${frappe.utils.icon("close")}</a>
+        </div>`;
     }
 
     bind_toggle_saved_filters() {

@@ -144,12 +144,12 @@ frappe.ui.LinkPreview = class {
         this.element.popover({
             container: "body",
             template: `
-				<div class="link-preview-popover popover">
-					<div class="arrow"></div>
-					<div class="popover-body popover-content">
-					</div>
-				</div>
-			`,
+                <div class="link-preview-popover popover">
+                    <div class="arrow"></div>
+                    <div class="popover-body popover-content">
+                    </div>
+                </div>
+            `,
             html: true,
             sanitizeFn: (content) => content,
             content: popover_content,
@@ -173,20 +173,20 @@ frappe.ui.LinkPreview = class {
 
         const div = document.createElement("div");
         div.innerHTML = `
-			<div class="preview-popover-header">
-				<div class="preview-header">
-					${this.get_image_html(preview_data)}
-					<div class="preview-id">
-						<a></a>
-					</div>
-					<div class="text-muted preview-title">${this.get_id_html(preview_data)}</div>
-				</div>
-			</div>
-			<hr>
-			<div class="popover-body">
-				${this.get_content_html(preview_data)}
-			</div>
-		`;
+            <div class="preview-popover-header">
+                <div class="preview-header">
+                    ${this.get_image_html(preview_data)}
+                    <div class="preview-id">
+                        <a></a>
+                    </div>
+                    <div class="text-muted preview-title">${this.get_id_html(preview_data)}</div>
+                </div>
+            </div>
+            <hr>
+            <div class="popover-body">
+                ${this.get_content_html(preview_data)}
+            </div>
+        `;
 
         const a = div.querySelector(".preview-id > a");
         a.href = this.href;
@@ -210,8 +210,8 @@ frappe.ui.LinkPreview = class {
         let avatar_html = frappe.get_avatar("avatar-medium", preview_data.preview_title, preview_data.preview_image);
 
         return `<div class="preview-image">
-			${avatar_html}
-		</div>`;
+            ${avatar_html}
+        </div>`;
     }
 
     get_content_html(preview_data) {
@@ -222,11 +222,11 @@ frappe.ui.LinkPreview = class {
                 let value = frappe.ellipsis(preview_data[key], 280);
                 let label = key;
                 content_html += `
-					<div class="preview-field">
-						<div class="preview-label text-muted">${__(label)}</div>
-						<div class="preview-value">${value}</div>
-					</div>
-				`;
+                    <div class="preview-field">
+                        <div class="preview-label text-muted">${__(label)}</div>
+                        <div class="preview-value">${value}</div>
+                    </div>
+                `;
             }
         });
 

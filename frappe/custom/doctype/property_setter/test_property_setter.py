@@ -4,4 +4,4 @@ from frappe.tests import IntegrationTestCase
 
 
 class TestPropertySetter(IntegrationTestCase):
-	pass
+    pass

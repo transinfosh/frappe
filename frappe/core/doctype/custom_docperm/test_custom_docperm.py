@@ -4,4 +4,4 @@ from frappe.tests import IntegrationTestCase
 
 
 class TestCustomDocPerm(IntegrationTestCase):
-	pass
+    pass

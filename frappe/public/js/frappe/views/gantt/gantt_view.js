@@ -140,7 +140,7 @@ frappe.views.GanttView = class GanttView extends frappe.views.ListView {
                 var item = me.get_item(task.id);
 
                 var html = `<div class="title">${task.id}</div>
-					<div class="subtitle">${moment(task._start).format("MMM D")} - ${moment(task._end).format(
+                    <div class="subtitle">${moment(task._start).format("MMM D")} - ${moment(task._end).format(
                     "MMM D"
                 )}</div>`;
 
@@ -167,16 +167,16 @@ frappe.views.GanttView = class GanttView extends frappe.views.ListView {
         const view_modes = this.gantt.options.view_modes || [];
         const active_class = (view_mode) => (this.gantt.view_is(view_mode) ? "btn-info" : "");
         const html = `<div class="btn-group gantt-view-mode">
-				${view_modes
+                ${view_modes
                     .map(
                         (value) => `<button type="button"
-						class="btn btn-default btn-sm btn-view-mode ${active_class(value)}"
-						data-value="${value}">
-						${__(value)}
-					</button>`
+                        class="btn btn-default btn-sm btn-view-mode ${active_class(value)}"
+                        data-value="${value}">
+                        ${__(value)}
+                    </button>`
                     )
                     .join("")}
-			</div>`;
+            </div>`;
 
         this.$paging_area.find(".level-left").append(html);
 
@@ -205,13 +205,13 @@ frappe.views.GanttView = class GanttView extends frappe.views.ListView {
                 const bar_color = "#" + c.substr(6);
                 const progress_color = frappe.ui.color.get_contrast_color(bar_color);
                 return `
-				.gantt .bar-wrapper.${class_name} .bar {
-					fill: ${bar_color};
-				}
-				.gantt .bar-wrapper.${class_name} .bar-progress {
-					fill: ${progress_color};
-				}
-			`;
+                .gantt .bar-wrapper.${class_name} .bar {
+                    fill: ${bar_color};
+                }
+                .gantt .bar-wrapper.${class_name} .bar-progress {
+                    fill: ${progress_color};
+                }
+            `;
             })
             .join("");
 

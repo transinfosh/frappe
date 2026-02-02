@@ -303,18 +303,18 @@ frappe.setup.SetupWizard = class SetupWizard extends frappe.ui.Slides {
 
     get_message(title, message = "") {
         const loading_html = `<div class="progress-chart">
-			<div class="progress">
-				<div class="progress-bar"></div>
-			</div>
-		</div>`;
+            <div class="progress">
+                <div class="progress-bar"></div>
+            </div>
+        </div>`;
 
         return $(`<div class="slides-wrapper container setup-wizard-slide setup-in-progress">
-			<div class="content text-center">
-				<h1 class="slide-title title">${title}</h1>
-				<div class="state-icon-container">${loading_html}</div>
-				<p class="setup-message text-muted">${message}</p>
-			</div>
-		</div>`);
+            <div class="content text-center">
+                <h1 class="slide-title title">${title}</h1>
+                <div class="state-icon-container">${loading_html}</div>
+                <p class="setup-message text-muted">${message}</p>
+            </div>
+        </div>`);
     }
 
     set_setup_complete_message(title, message) {

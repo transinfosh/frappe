@@ -49,23 +49,23 @@ class FormTimeline extends BaseTimeline {
         let me = this;
         this.timeline_wrapper.remove(this.timeline_actions_wrapper);
         this.timeline_wrapper.prepend(`
-				<div class="timeline-item activity-title">
-				<h4>${__("Activity")}</h4>
-				</div>
-			`);
+                <div class="timeline-item activity-title">
+                <h4>${__("Activity")}</h4>
+                </div>
+            `);
         if (has_communications()) {
             this.timeline_wrapper
                 .find(".timeline-item.activity-title")
                 .append(
                     `
-					<div class="d-flex align-items-center show-all-activity">
-						<span style="color: var(--text-light); margin:0px 6px;">${__("Show all activity")}</span>
-						<label class="switch">
-							<input type="checkbox">
-							<span class="slider round"></span>
-						</label>
-					</div>
-				`
+                    <div class="d-flex align-items-center show-all-activity">
+                        <span style="color: var(--text-light); margin:0px 6px;">${__("Show all activity")}</span>
+                        <label class="switch">
+                            <input type="checkbox">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
+                `
                 )
                 .find("input[type=checkbox]")
                 .prop("checked", !me.only_communication)
@@ -88,13 +88,13 @@ class FormTimeline extends BaseTimeline {
             const message = __("Add to this activity by mailing to {0}", [link.bold()]);
 
             this.document_email_link_wrapper = $(`
-				<div class="timeline-item">
-					<div class="timeline-dot"></div>
-					<div class="timeline-content">
-						<span>${message}</span>
-					</div>
-				</div>
-			`);
+                <div class="timeline-item">
+                    <div class="timeline-dot"></div>
+                    <div class="timeline-content">
+                        <span>${message}</span>
+                    </div>
+                </div>
+            `);
             this.timeline_items_wrapper.before(this.document_email_link_wrapper);
 
             this.document_email_link_wrapper.find(".document-email-link").on("click", (e) => {
@@ -605,22 +605,22 @@ class FormTimeline extends BaseTimeline {
         if (frappe.session.user == doc.owner || frappe.user.has_role("System Manager")) {
             if (frappe.model.can_delete("Comment")) {
                 const delete_option = $(`
-					<a class="dropdown-item">${__("Delete")}</a>
-				`).click(() => this.delete_comment(doc.id));
+                    <a class="dropdown-item">${__("Delete")}</a>
+                `).click(() => this.delete_comment(doc.id));
                 dropdown_menu.append(delete_option);
             }
 
             const un_publish_button = $(`
-				<a class="dropdown-item">${doc.published ? __("Unpublish") : __("Publish")}</a>
-			`).click(() => this.update_comment_publicity(doc.id, !doc.published));
+                <a class="dropdown-item">${doc.published ? __("Unpublish") : __("Publish")}</a>
+            `).click(() => this.update_comment_publicity(doc.id, !doc.published));
             dropdown_menu.append(un_publish_button);
         }
 
         let dismiss_button = $(`
-			<button class="btn btn-link action-btn">
-				${__("Dismiss")}
-			</button>
-		`).click(() => edit_button.toggle_edit_mode());
+            <button class="btn btn-link action-btn">
+                ${__("Dismiss")}
+            </button>
+        `).click(() => edit_button.toggle_edit_mode());
         dismiss_button.hide();
 
         edit_box.set_value(doc.content);

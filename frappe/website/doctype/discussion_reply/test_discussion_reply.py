@@ -6,4 +6,4 @@ from frappe.tests import IntegrationTestCase
 
 
 class TestDiscussionReply(IntegrationTestCase):
-	pass
+    pass

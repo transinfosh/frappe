@@ -351,10 +351,10 @@ frappe.views.BaseList = class BaseList {
 
     setup_no_result_area() {
         this.$no_result = $(`
-			<div class="no-result text-muted flex justify-center align-center">
-				${this.get_no_result_message()}
-			</div>
-		`).hide();
+            <div class="no-result text-muted flex justify-center align-center">
+                ${this.get_no_result_message()}
+            </div>
+        `).hide();
         this.$frappe_list.append(this.$no_result);
     }
 
@@ -371,26 +371,26 @@ frappe.views.BaseList = class BaseList {
         const paging_values = [20, 100, 500, 2500];
         this.$paging_area = $(
             `<div class="list-paging-area level">
-				<div class="level-left">
-					<div class="btn-group">
-						${paging_values
+                <div class="level-left">
+                    <div class="btn-group">
+                        ${paging_values
                 .map(
                     (value) => `
-							<button type="button" class="btn btn-default btn-sm btn-paging"
-								data-value="${value}">
-								${value}
-							</button>
-						`
+                            <button type="button" class="btn btn-default btn-sm btn-paging"
+                                data-value="${value}">
+                                ${value}
+                            </button>
+                        `
                 )
                 .join("")}
-					</div>
-				</div>
-				<div class="level-right">
-					<button class="btn btn-default btn-more btn-sm">
-						${__("Load More")}
-					</button>
-				</div>
-			</div>`
+                    </div>
+                </div>
+                <div class="level-right">
+                    <button class="btn btn-default btn-more btn-sm">
+                        ${__("Load More")}
+                    </button>
+                </div>
+            </div>`
         ).hide();
         this.$frappe_list.append(this.$paging_area);
 
@@ -638,11 +638,11 @@ class FilterArea {
         this.standard_filters_wrapper.hide();
         this.list_view.page.page_form.css("justify-content", "flex-end");
         $(`<button class="filter-toggle btn btn-default btn-sm filter-button">
-					<span class="filter-icon button-icon">
-						${frappe.utils.icon("funnel-plus")}
-					</span>
-				</button>
-			</div>`)
+                    <span class="filter-icon button-icon">
+                        ${frappe.utils.icon("funnel-plus")}
+                    </span>
+                </button>
+            </div>`)
             .prependTo(this.$filter_list_wrapper.find(".filter-selector"))
             .on("click", function () {
                 me.toggle_standard_filter();
@@ -924,22 +924,22 @@ class FilterArea {
 
     make_filter_list() {
         $(`<div class="filter-selector">
-			<div class="btn-group">
-				<button class="btn btn-default btn-sm filter-button">
-					<span class="filter-icon button-icon">
-						${frappe.utils.icon("es-line-filter")}
-					</span>
-					<span class="button-label hidden-xs">
-					${__("Filter")}
-					<span>
-				</button>
-				<button class="btn btn-default btn-sm filter-x-button" title="${__("Clear all filters")}">
-					<span class="filter-icon button-icon">
-						${frappe.utils.icon("es-small-close")}
-					</span>
-				</button>
-			</div>
-		</div>`).appendTo(this.$filter_list_wrapper);
+            <div class="btn-group">
+                <button class="btn btn-default btn-sm filter-button">
+                    <span class="filter-icon button-icon">
+                        ${frappe.utils.icon("es-line-filter")}
+                    </span>
+                    <span class="button-label hidden-xs">
+                    ${__("Filter")}
+                    <span>
+                </button>
+                <button class="btn btn-default btn-sm filter-x-button" title="${__("Clear all filters")}">
+                    <span class="filter-icon button-icon">
+                        ${frappe.utils.icon("es-small-close")}
+                    </span>
+                </button>
+            </div>
+        </div>`).appendTo(this.$filter_list_wrapper);
 
         this.filter_button = this.$filter_list_wrapper.find(".filter-button");
         this.filter_x_button = this.$filter_list_wrapper.find(".filter-x-button");

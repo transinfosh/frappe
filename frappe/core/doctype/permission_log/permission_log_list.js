@@ -1,9 +1,9 @@
 frappe.listview_settings["Permission Log"] = {
-	hide_id_column: true,
+    hide_id_column: true,
 
-	onload(listview) {
-		if (listview.list_view_settings) {
-			listview.list_view_settings.disable_comment_count = 1;
-		}
-	},
+    onload(listview) {
+        if (listview.list_view_settings) {
+            listview.list_view_settings.disable_comment_count = 1;
+        }
+    },
 };

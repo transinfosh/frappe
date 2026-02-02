@@ -4,4 +4,4 @@ from frappe.tests import IntegrationTestCase
 
 
 class TestKanbanBoard(IntegrationTestCase):
-	pass
+    pass

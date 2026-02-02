@@ -1,15 +1,15 @@
 {% extends "templates/web.html" %}
 
 {% block title %}
-	{{ title or (_("{0} List").format(_(doctype))) }}
+    {{ title or (_("{0} List").format(_(doctype))) }}
 {% endblock %}
 
 {% block header %}
-	<h3 class="my-account-header">{{ title or (_("{0} List").format(_(doctype))) }}</h3>
+    <h3 class="my-account-header">{{ title or (_("{0} List").format(_(doctype))) }}</h3>
 {% endblock %}
 
 {% block breadcrumbs %}
-	{% include "templates/includes/breadcrumbs.html" %}
+    {% include "templates/includes/breadcrumbs.html" %}
 {% endblock %}
 
 {% block header_actions %}
@@ -25,9 +25,9 @@
 {% block footer %}{% endblock %} {# no footer #}
 
 {% block page_content %}
-	{% if introduction %}<p>{{ introduction }}</p>{% endif %}
-	{% include list_template or "templates/includes/list/list.html" %}
-	{% if list_footer %}{{ list_footer }}{% endif %}
+    {% if introduction %}<p>{{ introduction }}</p>{% endif %}
+    {% include list_template or "templates/includes/list/list.html" %}
+    {% if list_footer %}{{ list_footer }}{% endif %}
 {% endblock %}
 
 {% block script %}

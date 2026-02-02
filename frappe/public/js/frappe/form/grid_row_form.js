@@ -40,53 +40,53 @@ export default class GridRowForm {
     make_form() {
         if (!this.form_area) {
             let template = `<div class="grid-form-heading">
-				<div class="toolbar grid-header-toolbar">
-					<span class="panel-title">
-						${__("Editing Row")} #<span class="grid-form-row-index"></span></span>
-					<span class="row-actions">
-						<button class="btn btn-secondary btn-sm pull-right grid-collapse-row" title="${__("Close")}">
-							${frappe.utils.icon("close")}
-						</button>
-						<button class="btn btn-secondary btn-sm pull-right grid-move-row hidden-xs">
-							${__("Move")}</button>
-						<button class="btn btn-secondary btn-sm pull-right grid-duplicate-row hidden-xs">
-							${frappe.utils.icon("duplicate")}
-							${__("Duplicate")}
-						</button>
-						<button class="btn btn-secondary btn-sm pull-right grid-insert-row hidden-xs">
-							${__("Insert Above")}</button>
-						<button class="btn btn-secondary btn-sm pull-right grid-insert-row-below hidden-xs">
-							${__("Insert Below")}</button>
-						<button class="btn btn-danger btn-sm pull-right grid-delete-row" title="${__("Delete Row")}">
-							${frappe.utils.icon("delete")}
-						</button>
-					</span>
-				</div>
-			</div>
-			<div class="grid-form-body">
-				<div class="form-area"></div>
-			</div>
-			<div class="grid-footer-toolbar hidden-xs flex justify-between">
-				<div class="grid-shortcuts">
-					<span> ${frappe.utils.icon("keyboard", "md")} </span>
-					<span class="text-medium"> ${__("Shortcuts")}: </span>
-					<kbd>${__("Ctrl + Up")}</kbd> . <kbd>${__("Ctrl + Down")}</kbd> . <kbd>${__("ESC")}</kbd>
-				</div>
-				<span class="row-actions">
-					<button class="btn btn-secondary btn-sm pull-right grid-last-row" title="${__("Last Row")}">
-						<i class='fa fa-angle-double-down text-large'></i>
-					</button>
-					<button class="btn btn-secondary btn-sm pull-right grid-next-row" title="${__("Next Row")}">
-						<i class='fa fa-angle-down text-large'></i>
-					</button>
-					<button class="btn btn-secondary btn-sm pull-right grid-prev-row" title="${__("Previous Row")}">
-						<i class='fa fa-angle-up text-large'></i>
-					</button>
-					<button class="btn btn-secondary btn-sm pull-right grid-first-row" title="${__("First Row")}">
-						<i class='fa fa-angle-double-up text-large'></i>
-					</button>
-				</span>
-			</div>`;
+                <div class="toolbar grid-header-toolbar">
+                    <span class="panel-title">
+                        ${__("Editing Row")} #<span class="grid-form-row-index"></span></span>
+                    <span class="row-actions">
+                        <button class="btn btn-secondary btn-sm pull-right grid-collapse-row" title="${__("Close")}">
+                            ${frappe.utils.icon("close")}
+                        </button>
+                        <button class="btn btn-secondary btn-sm pull-right grid-move-row hidden-xs">
+                            ${__("Move")}</button>
+                        <button class="btn btn-secondary btn-sm pull-right grid-duplicate-row hidden-xs">
+                            ${frappe.utils.icon("duplicate")}
+                            ${__("Duplicate")}
+                        </button>
+                        <button class="btn btn-secondary btn-sm pull-right grid-insert-row hidden-xs">
+                            ${__("Insert Above")}</button>
+                        <button class="btn btn-secondary btn-sm pull-right grid-insert-row-below hidden-xs">
+                            ${__("Insert Below")}</button>
+                        <button class="btn btn-danger btn-sm pull-right grid-delete-row" title="${__("Delete Row")}">
+                            ${frappe.utils.icon("delete")}
+                        </button>
+                    </span>
+                </div>
+            </div>
+            <div class="grid-form-body">
+                <div class="form-area"></div>
+            </div>
+            <div class="grid-footer-toolbar hidden-xs flex justify-between">
+                <div class="grid-shortcuts">
+                    <span> ${frappe.utils.icon("keyboard", "md")} </span>
+                    <span class="text-medium"> ${__("Shortcuts")}: </span>
+                    <kbd>${__("Ctrl + Up")}</kbd> . <kbd>${__("Ctrl + Down")}</kbd> . <kbd>${__("ESC")}</kbd>
+                </div>
+                <span class="row-actions">
+                    <button class="btn btn-secondary btn-sm pull-right grid-last-row" title="${__("Last Row")}">
+                        <i class='fa fa-angle-double-down text-large'></i>
+                    </button>
+                    <button class="btn btn-secondary btn-sm pull-right grid-next-row" title="${__("Next Row")}">
+                        <i class='fa fa-angle-down text-large'></i>
+                    </button>
+                    <button class="btn btn-secondary btn-sm pull-right grid-prev-row" title="${__("Previous Row")}">
+                        <i class='fa fa-angle-up text-large'></i>
+                    </button>
+                    <button class="btn btn-secondary btn-sm pull-right grid-first-row" title="${__("First Row")}">
+                        <i class='fa fa-angle-double-up text-large'></i>
+                    </button>
+                </span>
+            </div>`;
 
             $(template).appendTo(this.wrapper);
             this.form_area = this.wrapper.find(".form-area");

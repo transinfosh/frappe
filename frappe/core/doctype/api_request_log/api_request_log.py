@@ -6,23 +6,23 @@ from frappe.model.document import Document
 
 
 class APIRequestLog(Document):
-	# begin: auto-generated types
-	# This code is auto-generated. Do not modify anything in this block.
+    # begin: auto-generated types
+    # This code is auto-generated. Do not modify anything in this block.
 
-	from typing import TYPE_CHECKING
+    from typing import TYPE_CHECKING
 
-	if TYPE_CHECKING:
-		from frappe.types import DF
+    if TYPE_CHECKING:
+        from frappe.types import DF
 
-		method: DF.Data | None
-		path: DF.Data | None
-		user: DF.Link | None
-	# end: auto-generated types
+        method: DF.Data | None
+        path: DF.Data | None
+        user: DF.Link | None
+    # end: auto-generated types
 
-	@staticmethod
-	def clear_old_logs(days: int = 90):
-		from frappe.query_builder import Interval
-		from frappe.query_builder.functions import Now
+    @staticmethod
+    def clear_old_logs(days: int = 90):
+        from frappe.query_builder import Interval
+        from frappe.query_builder.functions import Now
 
-		table = frappe.qb.DocType("API Request Log")
-		frappe.db.delete(table, filters=(table.creation < (Now() - Interval(days=days))))
+        table = frappe.qb.DocType("API Request Log")
+        frappe.db.delete(table, filters=(table.creation < (Now() - Interval(days=days))))

@@ -19,18 +19,18 @@ frappe.ui.form.ControlInput = class ControlInput extends frappe.ui.form.Control 
         } else {
             this.$wrapper = $(
                 `<div class="frappe-control">
-				<div class="form-group">
-					<div class="clearfix">
-						<label class="control-label" style="padding-right: 5px;"></label>
-						<span class="help"></span>
-					</div>
-					<div class="control-input-wrapper">
-						<div class="control-input"></div>
-						<div class="control-value like-disabled-input" style="display: none;"></div>
-						<div class="help-box small text-extra-muted hide"></div>
-					</div>
-				</div>
-			</div>`
+                <div class="form-group">
+                    <div class="clearfix">
+                        <label class="control-label" style="padding-right: 5px;"></label>
+                        <span class="help"></span>
+                    </div>
+                    <div class="control-input-wrapper">
+                        <div class="control-input"></div>
+                        <div class="control-value like-disabled-input" style="display: none;"></div>
+                        <div class="help-box small text-extra-muted hide"></div>
+                    </div>
+                </div>
+            </div>`
             ).appendTo(this.parent);
 
             if (this.constructor.horizontal) {
@@ -212,12 +212,12 @@ frappe.ui.form.ControlInput = class ControlInput extends frappe.ui.form.Control 
         let $help = this.$wrapper.find("span.help");
         $help.empty();
         $(`<a
-			href="${frappe.utils.escape_html(this.df.documentation_url)}"
-			target="_blank"
-			title="${frappe.utils.escape_html(__("Documentation"))}"
-		>
-			${frappe.utils.icon("help", "sm")}
-		</a>`).appendTo($help);
+            href="${frappe.utils.escape_html(this.df.documentation_url)}"
+            target="_blank"
+            title="${frappe.utils.escape_html(__("Documentation"))}"
+        >
+            ${frappe.utils.icon("help", "sm")}
+        </a>`).appendTo($help);
     }
 
     set_description(description) {

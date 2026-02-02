@@ -6,39 +6,39 @@
 
 {% block page_content %}
 <style>
-	body {
-		background-color: var(--subtle-accent);
-		font-size: var(--text-base);
-	}
+    body {
+        background-color: var(--subtle-accent);
+        font-size: var(--text-base);
+    }
 </style>
 <div class='error-page'>
-	<div>
-		{% if title %}
-		<h4 class='page-card-head'>{{ title }}</h4>
-		{% endif %}
-		<div class="details">
-		{% block message_body %}
-			{% if message %}
-				<p>{{ message }}</p>
-				{% if error_code %}
-				<p class='text-muted text-center small' style='margin-top: -20px;'>{{ _("Status: {0}").format(error_code) }}</p>
-				{% endif %}
-			{% endif %}
-			{% if primary_action %}
-			<div><a href='{{ primary_action or "/" }}' class='btn btn-primary btn-sm btn-block'>
-				{{ primary_label or _("Home") }}</a></div>
-			{% endif %}
-		{% endblock %}
-		</div>
-	</div>
+    <div>
+        {% if title %}
+        <h4 class='page-card-head'>{{ title }}</h4>
+        {% endif %}
+        <div class="details">
+        {% block message_body %}
+            {% if message %}
+                <p>{{ message }}</p>
+                {% if error_code %}
+                <p class='text-muted text-center small' style='margin-top: -20px;'>{{ _("Status: {0}").format(error_code) }}</p>
+                {% endif %}
+            {% endif %}
+            {% if primary_action %}
+            <div><a href='{{ primary_action or "/" }}' class='btn btn-primary btn-sm btn-block'>
+                {{ primary_label or _("Home") }}</a></div>
+            {% endif %}
+        {% endblock %}
+        </div>
+    </div>
 </div>
 <script>
-	frappe.ready(function() {
-		if (window.location.hash || window.location.href.includes('/app')) {
-			localStorage.setItem('session_last_route', window.location.pathname);
-		}
+    frappe.ready(function() {
+        if (window.location.hash || window.location.href.includes('/app')) {
+            localStorage.setItem('session_last_route', window.location.pathname);
+        }
 
-		$('.btn-primary').focus();
-	});
+        $('.btn-primary').focus();
+    });
 </script>
 {% endblock %}

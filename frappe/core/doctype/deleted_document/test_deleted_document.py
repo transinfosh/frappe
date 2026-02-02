@@ -4,4 +4,4 @@ from frappe.tests import IntegrationTestCase
 
 
 class TestDeletedDocument(IntegrationTestCase):
-	pass
+    pass

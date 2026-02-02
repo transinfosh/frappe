@@ -4,4 +4,4 @@ from frappe.tests import IntegrationTestCase
 
 
 class TestEmailTemplate(IntegrationTestCase):
-	pass
+    pass

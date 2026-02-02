@@ -14,9 +14,9 @@ IGNORE_TEST_RECORD_DEPENDENCIES = []  # eg. ["User"]
 
 
 class IntegrationTestQuantityCompleteDefinition(IntegrationTestCase):
-	"""
-	Integration tests for QuantityCompleteDefinition.
-	Use this class for testing interactions between multiple components.
-	"""
+    """
+    Integration tests for QuantityCompleteDefinition.
+    Use this class for testing interactions between multiple components.
+    """
 
-	pass
+    pass

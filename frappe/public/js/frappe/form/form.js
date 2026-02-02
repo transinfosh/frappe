@@ -1865,13 +1865,13 @@ frappe.ui.form.Form = class FrappeForm {
                 const escaped_id = encodeURIComponent(value);
 
                 return `
-						<a class="indicator ${get_color(doc || {})}"
-							href="/app/${frappe.router.slug(df.options)}/${escaped_id}"
-							data-doctype="${df.options}"
-							data-id="${frappe.utils.escape_html(value)}">
-							${label}
-						</a>
-					`;
+                        <a class="indicator ${get_color(doc || {})}"
+                            href="/app/${frappe.router.slug(df.options)}/${escaped_id}"
+                            data-doctype="${df.options}"
+                            data-id="${frappe.utils.escape_html(value)}">
+                            ${label}
+                        </a>
+                    `;
             } else {
                 return "";
             }
@@ -2160,21 +2160,21 @@ frappe.ui.form.Form = class FrappeForm {
                     } else {
                         div_class = "col-md-6";
                         secondary = `
-						</div>
-						<div class="col-md-6">
-							<a href='/app/submission-queue?ref_doctype=${encodeURIComponent(this.doctype)}&ref_docid=${encodeURIComponent(
+                        </div>
+                        <div class="col-md-6">
+                            <a href='/app/submission-queue?ref_doctype=${encodeURIComponent(this.doctype)}&ref_docid=${encodeURIComponent(
                             this.docid
                         )}'>${__("All Submissions")}</a>
-						`;
+                        `;
                     }
 
                     let html = `
-					<div class="row">
-						<div class="${div_class}">
-							<a href='/app/submission-queue/${r.message.latest_submission}'>${submission_label} (${r.message.status})</a>${secondary}
-						</div>
-					</div>
-					`;
+                    <div class="row">
+                        <div class="${div_class}">
+                            <a href='/app/submission-queue/${r.message.latest_submission}'>${submission_label} (${r.message.status})</a>${secondary}
+                        </div>
+                    </div>
+                    `;
 
                     wrapper.removeClass("red").removeClass("yellow");
                     wrapper.addClass(r.message.status == "Failed" ? "red" : "yellow");

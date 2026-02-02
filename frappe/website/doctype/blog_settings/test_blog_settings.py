@@ -5,4 +5,4 @@ from frappe.tests import IntegrationTestCase
 
 
 class TestBlogSettings(IntegrationTestCase):
-	pass
+    pass

@@ -43,12 +43,12 @@ frappe.ui.FilterGroup = class {
         this.filter_button.popover({
             content: this.get_filter_area_template(),
             template: `
-				<div class="filter-popover popover">
-					<div class="arrow"></div>
-					<div class="popover-body popover-content">
-					</div>
-				</div>
-			`,
+                <div class="filter-popover popover">
+                    <div class="arrow"></div>
+                    <div class="popover-body popover-content">
+                    </div>
+                </div>
+            `,
             html: true,
             trigger: "manual",
             container: "body",
@@ -294,30 +294,30 @@ frappe.ui.FilterGroup = class {
 
     get_filter_area_template() {
         return $(`
-			<div class="filter-area">
-				<div class="filter-edit-area">
-					<div class="text-muted empty-filters text-center">
-						${__("No filters selected")}
-					</div>
-				</div>
-				<hr class="divider"></hr>
-				<div class="filter-action-buttons mt-2">
-					<button class="text-muted add-filter btn btn-xs">
-						+ ${__("Add a Filter")}
-					</button>
-					<div>
-						<button class="btn btn-secondary btn-xs clear-filters">
-							${__("Clear Filters")}
-						</button>
-						${this.filter_button
+            <div class="filter-area">
+                <div class="filter-edit-area">
+                    <div class="text-muted empty-filters text-center">
+                        ${__("No filters selected")}
+                    </div>
+                </div>
+                <hr class="divider"></hr>
+                <div class="filter-action-buttons mt-2">
+                    <button class="text-muted add-filter btn btn-xs">
+                        + ${__("Add a Filter")}
+                    </button>
+                    <div>
+                        <button class="btn btn-secondary btn-xs clear-filters">
+                            ${__("Clear Filters")}
+                        </button>
+                        ${this.filter_button
                 ? `<button class="btn btn-primary btn-xs apply-filters">
-								${__("Apply Filters")}
-							</button>`
+                                ${__("Apply Filters")}
+                            </button>`
                 : ""
             }
-					</div>
-				</div>
-			</div>`);
+                    </div>
+                </div>
+            </div>`);
     }
 
     get_filters_as_object() {

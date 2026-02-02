@@ -61,59 +61,59 @@ export default class Grid {
 
     make() {
         let template = `
-			<div class="grid-field">
-				<label class="control-label">${__(this.df.label || "")}</label>
-				<span class="help"></span>
-				<p class="text-muted small grid-description"></p>
-				<div class="grid-custom-buttons"></div>
-				<div class="form-grid-container column-limit-reached">
-					<div class="form-grid ${this.df.in_place_edit ? "" : "last-col-is-action"}">
-						<div class="grid-heading-row"></div>
-						<div class="grid-body">
-							<div class="rows"></div>
-							<div class="grid-empty text-center text-extra-muted">
-								${__("No rows")}
-							</div>
-						</div>
-					</div>
-				</div>
-				<div class="small form-clickable-section grid-footer">
-					<div class="flex justify-between">
-						<div class="grid-buttons">
-							<button type="button" class="btn btn-xs btn-danger grid-remove-rows hidden"
-								data-action="delete_rows">
-								${__("Delete")}
-							</button>
-							<button type="button" class="btn btn-xs btn-secondary grid-remove-rows hidden"
-								data-action="duplicate_rows">
-								${__("Duplicate Row")}
-							</button>
-							<button type="button" class="btn btn-xs btn-danger grid-remove-all-rows hidden"
-								data-action="delete_all_rows">
-								${__("Delete All")}
-							</button>
-							<!-- hack to allow firefox include this in tabs -->
-							<button type="button" class="btn btn-xs btn-secondary grid-add-row">
-								${__("Add Row")}
-							</button>
-							<button type="button" class="grid-add-multiple-rows btn btn-xs btn-secondary hidden">
-								${__("Add Multiple")}</a>
-							</button>
-						</div>
-						<div class="grid-pagination">
-						</div>
-						<div class="grid-bulk-actions text-right">
-							<button type="button" class="grid-download btn btn-xs btn-secondary hidden">
-								${__("Download")}
-							</button>
-							<button type="button" class="grid-upload btn btn-xs btn-secondary hidden">
-								${__("Upload")}
-							</button>
-						</div>
-					</div>
-				</div>
-			</div>
-		`;
+            <div class="grid-field">
+                <label class="control-label">${__(this.df.label || "")}</label>
+                <span class="help"></span>
+                <p class="text-muted small grid-description"></p>
+                <div class="grid-custom-buttons"></div>
+                <div class="form-grid-container column-limit-reached">
+                    <div class="form-grid ${this.df.in_place_edit ? "" : "last-col-is-action"}">
+                        <div class="grid-heading-row"></div>
+                        <div class="grid-body">
+                            <div class="rows"></div>
+                            <div class="grid-empty text-center text-extra-muted">
+                                ${__("No rows")}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="small form-clickable-section grid-footer">
+                    <div class="flex justify-between">
+                        <div class="grid-buttons">
+                            <button type="button" class="btn btn-xs btn-danger grid-remove-rows hidden"
+                                data-action="delete_rows">
+                                ${__("Delete")}
+                            </button>
+                            <button type="button" class="btn btn-xs btn-secondary grid-remove-rows hidden"
+                                data-action="duplicate_rows">
+                                ${__("Duplicate Row")}
+                            </button>
+                            <button type="button" class="btn btn-xs btn-danger grid-remove-all-rows hidden"
+                                data-action="delete_all_rows">
+                                ${__("Delete All")}
+                            </button>
+                            <!-- hack to allow firefox include this in tabs -->
+                            <button type="button" class="btn btn-xs btn-secondary grid-add-row">
+                                ${__("Add Row")}
+                            </button>
+                            <button type="button" class="grid-add-multiple-rows btn btn-xs btn-secondary hidden">
+                                ${__("Add Multiple")}</a>
+                            </button>
+                        </div>
+                        <div class="grid-pagination">
+                        </div>
+                        <div class="grid-bulk-actions text-right">
+                            <button type="button" class="grid-download btn btn-xs btn-secondary hidden">
+                                ${__("Download")}
+                            </button>
+                            <button type="button" class="grid-upload btn btn-xs btn-secondary hidden">
+                                ${__("Upload")}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
 
         this.wrapper = $(template).appendTo(this.parent);
         $(this.parent).addClass("form-group");
@@ -174,8 +174,8 @@ export default class Grid {
         let $help = $(this.parent).find("span.help");
         $help.empty();
         $(`<a href="${this.df.documentation_url}" target="_blank">
-			${frappe.utils.icon("help", "sm")}
-		</a>`).appendTo($help);
+            ${frappe.utils.icon("help", "sm")}
+        </a>`).appendTo($help);
     }
 
     setup_grid_pagination() {

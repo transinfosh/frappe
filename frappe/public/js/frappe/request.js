@@ -566,7 +566,7 @@ frappe.request.report_error = function (xhr, request_opts) {
         var error_report_message = [
             "<h5>Please type some additional information that could help us reproduce this issue:</h5>",
             '<div style="min-height: 100px; border: 1px solid #bbb; \
-				border-radius: 5px; padding: 15px; margin-bottom: 15px;"></div>',
+                border-radius: 5px; padding: 15px; margin-bottom: 15px;"></div>',
             "<hr>",
             "<h5>App Versions</h5>",
             "<pre>" + JSON.stringify(frappe.boot.versions, null, "\t") + "</pre>",

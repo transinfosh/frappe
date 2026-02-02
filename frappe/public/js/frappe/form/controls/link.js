@@ -13,13 +13,13 @@ frappe.ui.form.ControlLink = class ControlLink extends frappe.ui.form.ControlDat
     make_input() {
         var me = this;
         $(`<div class="link-field ui-front" style="position: relative;">
-			<input type="text" class="input-with-feedback form-control">
-			<span class="link-btn">
-				<a class="btn-open" style="display: inline-block;" title="${__("Open Link")}">
-					${frappe.utils.icon("arrow-right", "xs")}
-				</a>
-			</span>
-		</div>`).prependTo(this.input_area);
+            <input type="text" class="input-with-feedback form-control">
+            <span class="link-btn">
+                <a class="btn-open" style="display: inline-block;" title="${__("Open Link")}">
+                    ${frappe.utils.icon("arrow-right", "xs")}
+                </a>
+            </span>
+        </div>`).prependTo(this.input_area);
         this.$input_area = $(this.input_area);
         this.$input = this.$input_area.find("input");
         this.$link = this.$input_area.find(".link-btn");

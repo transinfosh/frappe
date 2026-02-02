@@ -6,4 +6,4 @@ from frappe.tests import IntegrationTestCase
 
 
 class TestCustomHTMLBlock(IntegrationTestCase):
-	pass
+    pass

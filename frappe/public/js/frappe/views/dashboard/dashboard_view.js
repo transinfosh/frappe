@@ -183,21 +183,21 @@ frappe.views.DashboardView = class DashboardView extends frappe.views.ListView {
 
     render_empty_state() {
         const no_result_message_html = `<p>${__("You haven't added any Dashboard Charts or Number Cards yet.")}
-			<br>${__("Click On Customize to add your first widget")}</p>`;
+            <br>${__("Click On Customize to add your first widget")}</p>`;
 
         const customize_button = `<p><button class="btn btn-primary btn-sm" data-action="customize">
-				${__("Customize")}
-			</button></p>`;
+                ${__("Customize")}
+            </button></p>`;
 
         const empty_state_html = `<div class="msg-box no-border empty-dashboard">
-			<div>
-				<svg class="icon icon-xl" style="stroke: var(--text-light);">
-					<use href="#icon-small-file"></use>
-				</svg>
-			</div>
-			${no_result_message_html}
-			${customize_button}
-		</div>`;
+            <div>
+                <svg class="icon icon-xl" style="stroke: var(--text-light);">
+                    <use href="#icon-small-file"></use>
+                </svg>
+            </div>
+            ${no_result_message_html}
+            ${customize_button}
+        </div>`;
 
         this.$dashboard_wrapper.append(empty_state_html);
         this.$empty_state = this.$dashboard_wrapper.find(".empty-dashboard");

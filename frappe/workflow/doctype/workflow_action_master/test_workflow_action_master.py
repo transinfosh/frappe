@@ -14,9 +14,9 @@ IGNORE_TEST_RECORD_DEPENDENCIES = []  # eg. ["User"]
 
 
 class IntegrationTestWorkflowActionMaster(IntegrationTestCase):
-	"""
-	Integration tests for WorkflowActionMaster.
-	Use this class for testing interactions between multiple components.
-	"""
+    """
+    Integration tests for WorkflowActionMaster.
+    Use this class for testing interactions between multiple components.
+    """
 
-	pass
+    pass
