@@ -34,6 +34,7 @@ from frappe.modules.import_file import get_file_path
 from frappe.permissions import ALL_USER_ROLE, AUTOMATIC_ROLES, SYSTEM_USER_ROLE
 from frappe.query_builder.functions import Concat
 from frappe.utils import cint, flt, get_datetime, is_a_property, random_string
+from frappe.utils.data import get_select_options
 from frappe.website.utils import clear_cache
 
 if TYPE_CHECKING:
@@ -174,6 +175,7 @@ class DocType(Document):
 		states: DF.Table[DocTypeState]
 		subject_field: DF.Data | None
 		timeline_field: DF.Data | None
+		title: DF.Data | None
 		title_field: DF.Data | None
 		track_changes: DF.Check
 		track_seen: DF.Check
@@ -181,6 +183,10 @@ class DocType(Document):
 		translated_doctype: DF.Check
 		website_search_field: DF.Data | None
 	# end: auto-generated types
+
+	def before_validate(self):
+		if not self.get("title"):
+			self.set("title", self.name)
 
 	def validate(self):
 		"""Validate DocType before saving.
@@ -379,12 +385,12 @@ class DocType(Document):
 							UPDATE `tab{doctype}`
 							SET `{fieldname}` = source.`{source_fieldname}`
 							FROM `tab{link_doctype}` as source
-							WHERE `{link_fieldname}` = source.name
+							WHERE `tab{doctype}`.`{link_fieldname}` = source.name
 						"""
 						if df.not_nullable:
-							update_query += "AND `{fieldname}`=''"
+							update_query += "AND `tab{doctype}`.`{fieldname}`=''"
 						else:
-							update_query += "AND ifnull(`{fieldname}`, '')=''"
+							update_query += "AND ifnull(`tab{doctype}`.`{fieldname}`, '')=''"
 
 					self.flags.update_fields_to_fetch_queries.append(
 						update_query.format(
@@ -674,12 +680,13 @@ class DocType(Document):
 		`doctype` property for Single type."""
 
 		if self.issingle:
-			frappe.db.sql("""update tabSingles set doctype=%s where doctype=%s""", (new, old))
-			frappe.db.sql(
-				"""update tabSingles set value=%s
-				where doctype=%s and field='name' and value = %s""",
-				(new, new, old),
-			)
+			singles = frappe.qb.DocType("Singles")
+			(frappe.qb.update(singles).set(singles.doctype, new).where(singles.doctype == old)).run()
+			(
+				frappe.qb.update(singles)
+				.set(singles.value, new)
+				.where((singles.doctype == new) & (singles.field == "name") & (singles.value == old))
+			).run()
 		elif not self.is_virtual:
 			frappe.db.rename_table(old, new)
 			frappe.db.commit()
@@ -731,11 +738,13 @@ class DocType(Document):
 						# replace in one go
 						file_content = re.sub(
 							rf"{old_scrub}|{old_no_space}|{old_no_space_no_hyphen}",
-							lambda x: new_scrub
-							if x.group() == old_scrub
-							else new_no_space_no_hyphen
-							if x.group() == old_no_space_no_hyphen
-							else new_no_space,
+							lambda x: (
+								new_scrub
+								if x.group() == old_scrub
+								else new_no_space_no_hyphen
+								if x.group() == old_no_space_no_hyphen
+								else new_no_space
+							),
 							code,
 						)
 
@@ -1419,12 +1428,14 @@ def validate_fields(meta: Meta):
 						frappe.bold(d.fieldname)
 					)
 				)
-			elif d.default not in d.options.split("\n"):
-				frappe.throw(
-					_("Default value for {0} must be in the list of options.").format(
-						frappe.bold(d.fieldname)
+			else:
+				options = get_select_options(d.options, d.options_has_label)
+				if d.default not in options:
+					frappe.throw(
+						_("Default value for {0} must be in the list of options.").format(
+							frappe.bold(d.fieldname)
+						)
 					)
-				)
 
 	def check_precision(d):
 		if (
