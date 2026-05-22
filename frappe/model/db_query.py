@@ -340,7 +340,10 @@ from {tables}
 
 		# left join link tables
 		for link in self.link_tables:
-			args.tables += f" {self.join} {link.table_name} {link.table_alias} on ({link.table_alias}.`name` = {self.tables[0]}.`{link.fieldname}`)"
+			if link.name_is_bigint:
+				args.tables += f" {self.join} {link.table_name} {link.table_alias} on (cast({link.table_alias}.`name` as varchar(140)) = {self.tables[0]}.`{link.fieldname}`)"
+			else:
+				args.tables += f" {self.join} {link.table_name} {link.table_alias} on ({link.table_alias}.`name` = {self.tables[0]}.`{link.fieldname}`)"
 
 		if self.grouped_or_conditions:
 			self.conditions.append(f"({' or '.join(self.grouped_or_conditions)})")
@@ -429,7 +432,10 @@ from {tables}
 					continue
 				linked_doctype = linked_field.options
 				if linked_field.fieldtype == "Link":
-					linked_table = self.append_link_table(linked_doctype, linked_fieldname)
+					linked_doctype_obj = self.get_meta(linked_doctype)
+					linked_table = self.append_link_table(
+						linked_doctype, linked_fieldname, linked_doctype_obj.autoname == "autoincrement"
+					)
 					field = f"{linked_table.table_alias}.`{fieldname}`"
 				else:
 					field = f"`tab{linked_doctype}`.`{fieldname}`"
@@ -590,7 +596,7 @@ from {tables}
 		doctype = table_name[4:-1]
 		self.check_read_permission(doctype)
 
-	def append_link_table(self, doctype, fieldname):
+	def append_link_table(self, doctype, fieldname, name_is_bigint=False):
 		for linked_table in self.link_tables:
 			if linked_table.doctype == doctype and linked_table.fieldname == fieldname:
 				return linked_table
@@ -602,6 +608,7 @@ from {tables}
 			fieldname=fieldname,
 			table_name=f"`tab{doctype}`",
 			table_alias=f"`tab{doctype}_{self.linked_table_counter[doctype]}`",
+			name_is_bigint=name_is_bigint,
 		)
 		self.linked_table_aliases[linked_table.table_alias.replace("`", "")] = linked_table.table_name
 		self.link_tables.append(linked_table)
@@ -918,7 +925,10 @@ from {tables}
 				value = cstr(f.value)
 				can_be_null = False
 				fallback = f"'{FallBackDateTimeStr}'"
-
+			elif f.fieldname in ("docstatus"):
+				value = cint(f.value)
+				can_be_null = False
+				fallback = 0
 			elif f.operator.lower() in ("between") and (
 				f.fieldname in ("creation", "modified")
 				or (df and (df.fieldtype == "Date" or df.fieldtype == "Datetime"))

@@ -177,6 +177,7 @@ MAX_LIMIT = 18446744073709551615
 
 # Direct mapping from uppercase function names to pypika function classes
 FUNCTION_MAPPING = {
+	"CAST": functions.Cast,
 	"COUNT": functions.Count,
 	"SUM": functions.Sum,
 	"AVG": functions.Avg,
@@ -1549,9 +1550,16 @@ class Engine:
 				# permissions are already checked by has_permission
 				return
 
-			self.query = self.query.inner_join(self.permission_table).on(
-				self.table.parent == self.permission_table.name
-			)
+			if parent_meta.autoname == "autoincrement":
+				from frappe.query_builder.functions import Cast
+
+				self.query = self.query.inner_join(self.permission_table).on(
+					self.table.parent == Cast(self.permission_table.name, "VARCHAR(140)")
+				)
+			else:
+				self.query = self.query.inner_join(self.permission_table).on(
+					self.table.parent == self.permission_table.name
+				)
 
 		if condition := self.get_permission_conditions(self.permission_doctype, self.permission_table):
 			self.query = self.query.where(condition)
@@ -2043,7 +2051,15 @@ class LinkTableField(DynamicTableField):
 		table = frappe.qb.DocType(self.doctype)
 		main_table = frappe.qb.DocType(self.parent_doctype)
 		if not query.is_joined(table):
-			query = query.left_join(table).on(table.name == getattr(main_table, self.link_fieldname))
+			link_condition = table.name == getattr(main_table, self.link_fieldname)
+			if frappe.db.db_type == "postgres" and frappe.get_meta(self.doctype).autoname == "autoincrement":
+				from frappe.query_builder.functions import Cast
+
+				link_condition = Cast(table.name, "VARCHAR(140)") == getattr(
+					main_table, self.link_fieldname
+				)
+
+			query = query.left_join(table).on(link_condition)
 			if engine and engine.apply_permissions:
 				if condition := engine.get_permission_conditions(self.doctype, table):
 					query = query.where(condition)

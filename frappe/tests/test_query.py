@@ -1473,6 +1473,67 @@ class TestQuery(IntegrationTestCase):
 			note1.delete()
 			note2.delete()
 
+	def test_autoincrement_link_join_casts_name_in_postgres(self):
+		target_dt_name = "Test Auto Link Target"
+		source_dt_name = "Test Auto Link Source"
+
+		for dt in (source_dt_name, target_dt_name):
+			frappe.delete_doc_if_exists("DocType", dt)
+
+		target_dt = new_doctype(
+			target_dt_name,
+			autoname="autoincrement",
+			title_field="target_title",
+			show_title_field_in_link=1,
+			fields=[
+				{
+					"label": "Target Title",
+					"fieldname": "target_title",
+					"fieldtype": "Data",
+					"reqd": 1,
+				}
+			],
+		).insert(ignore_permissions=True)
+		source_dt = new_doctype(
+			source_dt_name,
+			fields=[
+				{
+					"label": "Link Field",
+					"fieldname": "link_field",
+					"fieldtype": "Link",
+					"options": target_dt_name,
+					"reqd": 1,
+				}
+			],
+		).insert(ignore_permissions=True)
+
+		target_doc = frappe.get_doc(
+			{"doctype": target_dt_name, "target_title": "Autoincrement Target Title"}
+		).insert(ignore_permissions=True)
+		source_doc = frappe.get_doc(
+			{"doctype": source_dt_name, "link_field": str(target_doc.name)}
+		).insert(ignore_permissions=True)
+
+		try:
+			query = frappe.qb.get_query(
+				source_dt_name,
+				fields=["name", "link_field.target_title"],
+				filters={"name": source_doc.name},
+			)
+			sql = query.get_sql()
+			result = query.run(as_dict=True)
+
+			self.assertEqual(result[0]["target_title"], target_doc.target_title)
+			if frappe.db.db_type == "postgres":
+				self.assertIn('CAST("TABTEST AUTO LINK TARGET"."NAME" AS VARCHAR(140))', sql.upper())
+			else:
+				self.assertNotIn("CAST(", sql.upper())
+		finally:
+			source_doc.delete(ignore_permissions=True)
+			target_doc.delete(ignore_permissions=True)
+			source_dt.delete(ignore_permissions=True)
+			target_dt.delete(ignore_permissions=True)
+
 	def test_multiple_dynamic_fields_group_order(self):
 		"""Test multiple dynamic fields in GROUP BY and ORDER BY."""
 		try:
