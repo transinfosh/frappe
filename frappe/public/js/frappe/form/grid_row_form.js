@@ -46,8 +46,8 @@ export default class GridRowForm {
 					<span class="panel-title">
 						${__("Editing Row")} #<span class="grid-form-row-index"></span></span>
 					<span class="row-actions">
-						<button class="btn btn-secondary btn-sm pull-right grid-collapse-row">
-							${frappe.utils.icon("down")}
+						<button class="btn btn-secondary btn-sm pull-right grid-collapse-row" title="${__("Close")}">
+							${frappe.utils.icon("close")}
 						</button>
 						<button class="btn btn-secondary btn-sm pull-right grid-move-row hidden-xs">
 							${__("Move")}</button>
@@ -65,18 +65,27 @@ export default class GridRowForm {
 			</div>
 			<div class="grid-form-body">
 				<div class="form-area"></div>
-				<div class="grid-footer-toolbar hidden-xs flex justify-between">
-					<div class="grid-shortcuts">
-						<span> ${frappe.utils.icon("keyboard", "md")} </span>
-						<span class="text-medium"> ${__("Shortcuts")}: </span>
-						<kbd>${__("Ctrl + Up")}</kbd> . <kbd>${__("Ctrl + Down")}</kbd> . <kbd>${__("ESC")}</kbd>
-					</div>
-					<span class="row-actions">
-						<button class="btn btn-secondary btn-sm pull-right grid-append-row">
-							${__("Insert Below")}
-						</button>
-					</span>
+			</div>
+			<div class="grid-footer-toolbar hidden-xs flex justify-between">
+				<div class="grid-shortcuts">
+					<span> ${frappe.utils.icon("keyboard", "md")} </span>
+					<span class="text-medium"> ${__("Shortcuts")}: </span>
+					<kbd>${__("Ctrl + Up")}</kbd> . <kbd>${__("Ctrl + Down")}</kbd> . <kbd>${__("ESC")}</kbd>
 				</div>
+				<span class="row-actions">
+					<button class="btn btn-secondary btn-sm pull-right grid-last-row" title="${__("Last Row")}">
+						<i class='fa fa-angle-double-down text-large'></i>
+					</button>
+					<button class="btn btn-secondary btn-sm pull-right grid-next-row" title="${__("Next Row")}">
+						<i class='fa fa-angle-down text-large'></i>
+					</button>
+					<button class="btn btn-secondary btn-sm pull-right grid-prev-row" title="${__("Previous Row")}">
+						<i class='fa fa-angle-up text-large'></i>
+					</button>
+					<button class="btn btn-secondary btn-sm pull-right grid-first-row" title="${__("First Row")}">
+						<i class='fa fa-angle-double-up text-large'></i>
+					</button>
+				</span>
 			</div>`;
 
 			$(template).appendTo(this.wrapper);
@@ -87,6 +96,10 @@ export default class GridRowForm {
 	}
 	set_form_events() {
 		var me = this;
+        this.wrapper.find(".grid-collapse-row").on("click", function () {
+            me.row.toggle_view();
+            return false;
+        });
 		this.wrapper.find(".grid-delete-row").on("click", function () {
 			me.row.remove();
 			return false;
@@ -107,15 +120,62 @@ export default class GridRowForm {
 			me.row.move();
 			return false;
 		});
-		this.wrapper.find(".grid-append-row").on("click", function () {
-			me.row.toggle_view(false);
-			me.row.grid.add_new_row(me.row.doc.idx + 1, null, true);
+        // this.wrapper.find(".grid-append-row").on("click", function () {
+        //     me.row.toggle_view(false);
+        //     me.row.grid.add_new_row(me.row.doc.idx + 1, null, true);
+        //     return false;
+        // });
+        this.wrapper.find(".grid-first-row").on("click", function () {
+            if (me.row.doc.idx == 1) {
+                frappe.show_alert(__("This is the first row"));
+                return false;
+            }
+
+            me.row.toggle_view(false, function () {
+                me.row.open_row_at_index(0);
+            });
+            return false;
+        });
+        this.wrapper.find(".grid-prev-row").on("click", function () {
+            if (me.row.doc.idx == 1) {
+                frappe.show_alert(__("This is the first row"));
+                return false;
+            }
+
+            if (me.row?.has_prev()) {
+                me.row.toggle_view(false, function () {
+                    me.row.open_prev();
+                });
+            }
 			return false;
 		});
-		this.wrapper.find(".grid-form-heading, .grid-footer-toolbar").on("click", function () {
-			me.row.toggle_view();
-			return false;
-		});
+        this.wrapper.find(".grid-next-row").on("click", function () {
+            if (me.row.doc.idx == me.row.grid.grid_rows.length) {
+                frappe.show_alert(__("This is the last row"));
+                return false;
+            }
+
+            if (me.row?.has_next()) {
+                me.row.toggle_view(false, function () {
+                    me.row.open_next();
+                });
+            }
+            return false;
+        });
+        this.wrapper.find(".grid-last-row").on("click", function () {
+            if (me.row.doc.idx == me.row.grid.grid_rows.length) {
+                frappe.show_alert(__("This is the last row"));
+                return false;
+            }
+            me.row.toggle_view(false, function () {
+                me.row.open_row_at_index(me.row.grid.grid_rows.length - 1);
+            });
+            return false;
+        });
+        // this.wrapper.find(".grid-form-heading, .grid-footer-toolbar").on("click", function () {
+        //     me.row.toggle_view();
+        //     return false;
+        // });
 	}
 	toggle_add_delete_button_display($parent) {
 		$parent.find(".row-actions, .grid-append-row").toggle(this.row.grid.is_editable());

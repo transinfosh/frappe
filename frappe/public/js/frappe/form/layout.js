@@ -73,7 +73,7 @@ frappe.ui.form.Layout = class Layout {
 			fieldname: "__newname",
 			reqd: 1,
 			hidden: 1,
-			label: __("Name"),
+			label: __("ID"),
 			get_status: function (field) {
 				if (
 					field.frm &&
@@ -506,6 +506,10 @@ frappe.ui.form.Layout = class Layout {
 
 				if (collapse && section.has_missing_mandatory()) {
 					collapse = false;
+				}
+
+				if (collapse && section.collapsed !== null) {
+					collapse = section.collapsed;
 				}
 
 				section.collapse(collapse);

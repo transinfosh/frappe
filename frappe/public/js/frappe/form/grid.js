@@ -44,6 +44,7 @@ export default class Grid {
 		this.is_grid = true;
 		this.debounced_refresh = this.refresh.bind(this);
 		this.debounced_refresh = frappe.utils.debounce(this.debounced_refresh, 100);
+		this.show_selected_rows_only = false;
 	}
 
 	get perm() {
@@ -228,8 +229,8 @@ export default class Grid {
 				.toggleClass(
 					"hidden",
 					num_selected_rows > 0 ||
-						this.cannot_add_rows ||
-						(this.df && this.df.cannot_add_rows)
+					this.cannot_add_rows ||
+					(this.df && this.df.cannot_add_rows)
 				);
 
 			// update "Delete" and "Duplicate" button labels
@@ -301,8 +302,11 @@ export default class Grid {
 		tasks.push(() => {
 			if (dirty) {
 				this.refresh();
-				this.frm &&
+				if (this.frm) {
 					this.frm.script_manager.trigger(this.df.fieldname + "_delete", this.doctype);
+				} else {
+					this.df.on_delete_row && this.df.on_delete_row(selected_children);
+				}
 			}
 		});
 
@@ -741,6 +745,9 @@ export default class Grid {
 				? this.frm.doc[this.df.fieldname] || []
 				: this.df.data || this.get_modal_data();
 		}
+		if (this.show_selected_rows_only && data && data.length) {
+			data = data.filter((row) => row.__checked);
+		}
 		return data;
 	}
 
@@ -808,10 +815,10 @@ export default class Grid {
 	get_modal_data() {
 		return this.df.get_data
 			? this.df.get_data().filter((data) => {
-					if (!this.deleted_docs || !this.deleted_docs.includes(data.name)) {
-						return data;
-					}
-			  })
+				if (!this.deleted_docs || !this.deleted_docs.includes(data.name)) {
+					return data;
+				}
+			})
 			: [];
 	}
 
@@ -941,6 +948,11 @@ export default class Grid {
 				this.grid_pagination.go_to_page(1);
 			}
 
+			if (this.df.cannot_add_rows) {
+				//if cannot add rows, do not add new row
+				return;
+			}
+
 			if (this.frm) {
 				var d = frappe.model.add_child(
 					this.frm.doc,
@@ -965,6 +977,7 @@ export default class Grid {
 
 				const row_idx = this.df.data.length + 1;
 				this.df.data.push({ idx: row_idx, __islocal: true, ...defaults });
+				var d = this.df.data[this.df.data.length - 1];
 				this.df.on_add_row && this.df.on_add_row(row_idx);
 				this.refresh();
 			}
@@ -1051,10 +1064,23 @@ export default class Grid {
 		this.user_defined_columns = [];
 		this.setup_user_defined_columns();
 		var total_colsize = 1,
-			fields =
-				this.user_defined_columns && this.user_defined_columns.length > 0
-					? this.user_defined_columns
-					: this.editable_fields || this.docfields;
+			fields = [];
+		if (this.user_defined_columns && this.user_defined_columns.length > 0) {
+			fields = this.user_defined_columns
+				.map((row) => {
+					let column = frappe.meta.get_docfield(this.doctype, row.fieldname);
+
+					if (column) {
+						column.in_list_view = 1;
+						column.columns = row.columns;
+						column.sticky = row.sticky;
+						return column;
+					}
+				})
+				.filter(Boolean);
+		} else {
+			fields = this.editable_fields || this.docfields;
+		}
 
 		this.visible_columns = [];
 
@@ -1066,6 +1092,10 @@ export default class Grid {
 				this.user_defined_columns && this.user_defined_columns.length > 0
 					? _df
 					: this.fields_map[_df.fieldname];
+
+			if (this.editable_fields && this.editable_fields.length > 0) {
+				df = Object.assign(df, _df);
+			}
 
 			if (
 				df &&
@@ -1108,7 +1138,7 @@ export default class Grid {
 					if (
 						passes < 3 &&
 						["Int", "Currency", "Float", "Check", "Percent"].indexOf(df.fieldtype) !==
-							-1
+						-1
 					) {
 						// don't increase col size of these fields in first 3 passes
 						continue;
@@ -1334,7 +1364,7 @@ export default class Grid {
 		if (!$btn) {
 			$btn = $(`<button type="button" class="btn btn-secondary btn-xs btn-custom">`)
 				.html(__(label))
-				.prependTo($wrapper)
+				.appendTo($wrapper)
 				.on("click", click);
 			this.custom_buttons[label] = $btn;
 		} else {
@@ -1363,6 +1393,11 @@ export default class Grid {
 			} else {
 				throw `field ${fieldname} not found`;
 			}
+
+			let doc_field = row?.user_defined_fields?.find((d) => d.fieldname === fieldname);
+			if (doc_field) {
+				doc_field[property] = value;
+			}
 		}
 
 		// update the parent too (for new rows)
@@ -1386,5 +1421,14 @@ export default class Grid {
 			}
 		}
 		return current_row;
+	}
+
+	toggle_show_selected_rows_only(show_selected_rows_only) {
+		if (show_selected_rows_only === true || show_selected_rows_only === false) {
+			this.show_selected_rows_only = show_selected_rows_only;
+		} else {
+			this.show_selected_rows_only = !this.show_selected_rows_only;
+		}
+		this.refresh();
 	}
 }

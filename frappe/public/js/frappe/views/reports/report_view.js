@@ -153,6 +153,8 @@ frappe.views.ReportView = class ReportView extends frappe.views.ListView {
 			.map((c) => c.colIndex);
 
 		Object.keys(this.link_title_doctype_fields).forEach(async (key) => {
+			if (this.is_empty_link_value(key)) return;
+
 			let link_title = await this.get_link_title_field_value(
 				this.link_title_doctype_fields[key],
 				key
@@ -182,10 +184,16 @@ frappe.views.ReportView = class ReportView extends frappe.views.ListView {
 	}
 
 	async get_link_title_field_value(doctype, value) {
+		if (this.is_empty_link_value(value)) return;
+
 		return (
 			frappe.utils.get_link_title(doctype, value) ||
 			(await frappe.utils.fetch_link_title(doctype, value))
 		);
+	}
+
+	is_empty_link_value(value) {
+		return value == null || value === "" || value === "null" || value === "undefined";
 	}
 
 	set_dirty_state_for_custom_report() {
@@ -1297,7 +1305,8 @@ frappe.views.ReportView = class ReportView extends frappe.views.ListView {
 
 						if (
 							curr.column.docfield.fieldtype == "Link" &&
-							frappe.boot.link_title_doctypes.includes(curr.column.docfield.options)
+							frappe.boot.link_title_doctypes.includes(curr.column.docfield.options) &&
+							!this.is_empty_link_value(curr.content)
 						) {
 							this.link_title_doctype_fields[curr.content] =
 								curr.column.docfield.options;

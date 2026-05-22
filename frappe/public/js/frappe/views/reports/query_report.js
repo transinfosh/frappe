@@ -709,7 +709,7 @@ frappe.views.QueryReport = class QueryReport extends frappe.views.BaseList {
 	refresh(have_filters_changed) {
 		this.toggle_message(true);
 		this.toggle_report(false);
-		let filters = this.get_filter_values(!this.prepared_report_name);
+		let filters = this.get_filter_values(!this.prepared_report_name, true);
 
 		// for custom reports,
 		// are_default_filters is true if the filters haven't been modified and for all filters,
@@ -1460,7 +1460,7 @@ frappe.views.QueryReport = class QueryReport extends frappe.views.BaseList {
 			.filter(Boolean);
 	}
 
-	get_filter_values(raise) {
+	get_filter_values(raise, add_null_fields = false) {
 		// check for mandatory property for filters added via UI
 		if (raise) {
 			const mandatory = this.filters.filter((f) => f.df.reqd || f.df.mandatory);
@@ -1476,7 +1476,7 @@ frappe.views.QueryReport = class QueryReport extends frappe.views.BaseList {
 		raise && this.toggle_message(false);
 
 		return this.filters
-			.filter((f) => f.get_value?.())
+			.filter((f) => add_null_fields || f.get_value?.())
 			.map((f) => {
 				var v = f.get_value();
 				// hidden fields dont have $input
