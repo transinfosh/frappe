@@ -62,8 +62,8 @@ frappe.ui.form.ControlSelect = class ControlSelect extends frappe.ui.form.Contro
 		// reset options, if something new is set
 		var options = this.df.options || [];
 
-		if (typeof this.df.options === "string") {
-			options = this.df.options.split("\n");
+		if (typeof this.df.options === "string" || Array.isArray(this.df.options)) {
+			options = frappe.utils.get_select_options(this.df.options, this.df.options_has_label, false, true, this.df.context || this.df.parent || this.doctype);
 		}
 
 		// nothing changed
@@ -79,7 +79,8 @@ frappe.ui.form.ControlSelect = class ControlSelect extends frappe.ui.form.Contro
 				this.$input,
 				options || [],
 				this.df.sort_options,
-				this.df.context || this.df.parent || this.doctype
+				this.df.context || this.df.parent || this.doctype,
+				this.df
 			);
 
 			if (value === undefined && selected) {
@@ -107,14 +108,13 @@ frappe.ui.form.ControlSelect = class ControlSelect extends frappe.ui.form.Contro
 		this.$wrapper.find(".placeholder").toggle(!input_set);
 	}
 };
-
-frappe.ui.form.add_options = function (input, options_list, sort, doctype) {
+frappe.ui.form.add_options = function (input, options_list, sort, doctype, df) {
 	let $select = $(input);
 	if (!Array.isArray(options_list)) {
 		return $select;
 	}
-
-	let options = options_list.map((raw_option) => parse_option(raw_option, doctype));
+	let translate_label = !df || !(df.doctype == "DocField" && df.fieldname == "fieldtype");
+	let options = options_list.map((raw_option) => frappe.utils.get_select_option(raw_option, df?.options_has_label, translate_label, doctype));
 	if (sort) {
 		options = options.sort((a, b) => cstr(a.label).localeCompare(cstr(b.label)));
 	}
@@ -154,32 +154,3 @@ frappe.ui.form.add_options = function (input, options_list, sort, doctype) {
 		return result;
 	};
 })(jQuery);
-
-function parse_option(v, doctype) {
-	let value = null;
-	let label = null;
-	let is_disabled = false;
-	let is_selected = false;
-
-	if (!is_null(v)) {
-		const is_value_null = is_null(v.value);
-		const is_label_null = is_null(v.label);
-		is_disabled = Boolean(v.disabled);
-		is_selected = Boolean(v.selected);
-
-		if (is_value_null && is_label_null && typeof v !== "object") {
-			value = v;
-			label = __(v, null, doctype);
-		} else {
-			value = is_value_null ? "" : v.value;
-			label = is_label_null ? __(value, null, doctype) : __(v.label, null, doctype);
-		}
-	}
-
-	return {
-		value,
-		label,
-		is_disabled,
-		is_selected,
-	};
-}

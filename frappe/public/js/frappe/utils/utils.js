@@ -1333,11 +1333,11 @@ Object.assign(frappe.utils, {
 					} else if (first_link.link_type == "Workspace") {
 						let workspaces = frappe.workspaces[frappe.router.slug(first_link.link_to)];
 						if (workspaces) {
-							if (workspaces.public) {
-								route = "/desk/" + frappe.router.slug(first_link.link_to);
-							} else {
-								route = "/desk/private/" + frappe.router.slug(workspaces.title);
-							}
+							route = frappe.utils.generate_route({
+								type: "workspace",
+								name: workspaces.name,
+								public: workspaces.public ? 1 : 0,
+							});
 						}
 
 						if (first_link.route) {
@@ -2223,5 +2223,95 @@ Object.assign(frappe.utils, {
 			if (num === small[i]) i++;
 		}
 		return i === small.length;
+	},
+	get_select_option: function (
+		option,
+		options_has_label = false,
+		translate_label = true,
+		doctype
+	) {
+		let value = "";
+		let label = "";
+		let is_disabled = false;
+		let is_selected = false;
+
+		if (option && typeof option === "object") {
+			value = is_null(option.value) ? "" : option.value;
+			label = is_null(option.label) ? value : option.label;
+			is_disabled = Boolean(option.disabled);
+			is_selected = Boolean(option.selected);
+		} else if (!is_null(option)) {
+			let raw_option = cstr(option).trim();
+			value = raw_option;
+			label = raw_option;
+
+			if (options_has_label) {
+				const comma_index = raw_option.indexOf(",");
+				if (comma_index === 0) {
+					value = "";
+					label = raw_option.substring(1).trim();
+				} else if (comma_index > 0) {
+					value = raw_option.substring(0, comma_index).trim();
+					label = raw_option.substring(comma_index + 1).trim();
+				}
+			}
+		}
+
+		return {
+			value,
+			label: translate_label ? __(label, null, doctype) : label,
+			is_disabled,
+			is_selected,
+		};
+	},
+	get_select_options: function (
+		options,
+		options_has_label = false,
+		remove_empty = false,
+		translate_label = true,
+		doctype
+	) {
+		let option_list = [];
+		if (Array.isArray(options)) {
+			option_list = options;
+		} else if (typeof options === "string") {
+			option_list = options.split("\n");
+		}
+
+		if (remove_empty) {
+			option_list = option_list.filter((option) => {
+				if (option && typeof option === "object") {
+					return !is_null(option.value) || !is_null(option.label);
+				}
+				return Boolean(option);
+			});
+		}
+
+		return option_list.map((option) =>
+			frappe.utils.get_select_option(option, options_has_label, translate_label, doctype)
+		);
+	},
+	get_select_option_values: function (options, options_has_label = false, remove_empty = false) {
+		return frappe.utils
+			.get_select_options(options, options_has_label, remove_empty, false)
+			.map((option) => option.value);
+	},
+	get_select_option_label: function (value, df, translate_label = true, doctype) {
+		if (!df?.options) {
+			return value;
+		}
+
+		const value_string = is_null(value) ? "" : cstr(value);
+		const option = frappe.utils
+			.get_select_options(
+				df.options,
+				df.options_has_label,
+				false,
+				translate_label,
+				doctype || df.parent
+			)
+			.find((option) => cstr(option.value) === value_string);
+
+		return option ? option.label : value;
 	},
 });
