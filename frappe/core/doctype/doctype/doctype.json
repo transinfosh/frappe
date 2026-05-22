@@ -24,6 +24,7 @@
   "allow_rename",
   "settings_tab",
   "sb0",
+  "title",
   "module",
   "is_submittable",
   "istable",
@@ -106,6 +107,14 @@
    "fieldname": "sb0",
    "fieldtype": "Section Break",
    "oldfieldtype": "Section Break"
+  },
+  {
+   "fieldname": "title",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_preview": 1,
+   "in_standard_filter": 1,
+   "label": "Title"
   },
   {
    "fieldname": "module",
@@ -308,13 +317,11 @@
   },
   {
    "collapsible": 1,
-   "depends_on": "eval:!doc.istable",
    "fieldname": "view_settings",
    "fieldtype": "Section Break",
    "label": "View Settings"
   },
   {
-   "depends_on": "eval:!doc.istable",
    "fieldname": "title_field",
    "fieldtype": "Data",
    "label": "Title Field",
@@ -820,6 +827,10 @@
    "role": "Administrator",
    "share": 1,
    "write": 1
+  },
+  {
+   "read": 1,
+   "role": "All"
   }
  ],
  "route": "doctype",
@@ -827,9 +838,12 @@
  "rows_threshold_for_grid_search": 20,
  "search_fields": "module",
  "show_name_in_global_search": 1,
+ "show_title_field_in_link": 1,
  "sort_field": "creation",
  "sort_order": "DESC",
  "states": [],
+ "title": "DocType",
+ "title_field": "title",
  "track_changes": 1,
  "translated_doctype": 1
 }

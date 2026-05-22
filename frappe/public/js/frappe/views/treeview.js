@@ -1,6 +1,5 @@
 // Copyright (c) 2015, Frappe Technologies Pvt. Ltd. and Contributors
 // MIT License. See license.txt
-
 frappe.provide("frappe.treeview_settings");
 frappe.provide("frappe.views.trees");
 window.cur_tree = null;
@@ -192,7 +191,6 @@ frappe.views.TreeView = class TreeView {
 	}
 	get_root() {
 		var me = this;
-
 		frappe.call({
 			method: me.get_tree_nodes,
 			args: me.args,

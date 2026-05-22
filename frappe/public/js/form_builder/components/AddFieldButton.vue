@@ -17,6 +17,7 @@
 						:options="fields"
 						@change="add_new_field"
 						:placeholder="__('Search fieldtypes...')"
+						:translate_labels="false"
 					/>
 				</div>
 			</div>
