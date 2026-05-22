@@ -404,7 +404,10 @@ export default class BulkOperations {
 			) {
 				let options = [];
 				if (typeof new_df.options === "string") {
-					options = new_df.options.split("\n");
+					options = frappe.utils.get_select_option_values(
+						new_df.options,
+						new_df.options_has_label
+					);
 				}
 				//set second option as default if first option is an empty string
 				new_df.default = options[0] || options[1];

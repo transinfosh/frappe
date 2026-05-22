@@ -36,6 +36,7 @@ from frappe.utils import (
 	sanitize_html,
 	strip_html,
 )
+from frappe.utils.data import get_select_options
 from frappe.utils.defaults import get_not_null_defaults
 from frappe.utils.html_utils import unescape_html
 
@@ -364,7 +365,9 @@ class BaseDocument:
 		if key in self.__dict__:
 			del self.__dict__[key]
 
-	def append(self, key: str, value: D | dict | None = None, position: int = -1) -> D:
+	def append(
+		self, key: str, value: D | dict | None = None, position: int = -1, set_defaults: bool = False
+	) -> D:
 		"""Append an item to a child table.
 
 		Example:
@@ -381,6 +384,8 @@ class BaseDocument:
 			self.__dict__[key] = table = []
 
 		d = self._init_child(value, key)
+		if set_defaults:
+			d._set_defaults()
 
 		if position == -1:
 			table.append(d)
@@ -399,6 +404,23 @@ class BaseDocument:
 		d._parent_doc = self._weakref
 
 		return d
+
+	def _set_defaults(self):
+		if frappe.flags.in_import:
+			return
+
+		if self.is_new():
+			new_doc = frappe.new_doc(self.doctype, as_dict=True)
+			self.update_if_missing(new_doc)
+
+		# children
+		for df in self.meta.get_table_fields():
+			new_doc = frappe.new_doc(df.options, parent_doc=self, parentfield=df.fieldname, as_dict=True)
+			value = self.get(df.fieldname)
+			if isinstance(value, list):
+				for d in value:
+					if d.is_new():
+						d.update_if_missing(new_doc)
 
 	@property
 	def parent_doc(self):
@@ -537,7 +559,7 @@ class BaseDocument:
 						value = self._evaluate_virtual_field_options(options)
 
 				fieldtype = df.fieldtype
-				if isinstance(value, list) and fieldtype not in table_fields:
+				if isinstance(value, list) and fieldtype != "JSON" and fieldtype not in table_fields:
 					frappe.throw(_("Value for {0} cannot be a list").format(_(df.label, context=df.parent)))
 
 				if fieldtype == "Check":
@@ -546,7 +568,7 @@ class BaseDocument:
 				elif fieldtype == "Int" and not isinstance(value, int):
 					value = cint(value)
 
-				elif fieldtype == "JSON" and isinstance(value, dict):
+				elif fieldtype == "JSON" and (isinstance(value, dict) or isinstance(value, list)):
 					value = json.dumps(value, separators=(",", ":"))
 
 				elif fieldtype in float_like_fields and not isinstance(value, float):
@@ -1098,7 +1120,7 @@ class BaseDocument:
 			if df.fieldname == "naming_series" or not self.get(df.fieldname) or not df.options:
 				continue
 
-			options = (df.options or "").split("\n")
+			options = get_select_options(df.options, df.options_has_label, False)
 
 			# if only empty options
 			if not filter(None, options):

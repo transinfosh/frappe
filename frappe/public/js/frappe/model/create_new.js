@@ -60,8 +60,27 @@ $.extend(frappe.model, {
 		if (frappe.route_options && !doc.parent) {
 			$.each(frappe.route_options, function (fieldname, value) {
 				var df = frappe.meta.has_field(doctype, fieldname);
-				if (df && !df.no_copy) {
+                if (!df || df.no_copy) {
+                    return;
+                }
+
+                if (df.fieldtype !== "Table" && df.fieldtype !== "Table Multi Select") {
 					doc[fieldname] = value;
+                    return;
+                }
+
+                doc[fieldname] = [];
+                for (let i = 0; i < value.length; i++) {
+                    let value_item = value[i];
+                    let new_child = frappe.model.get_new_doc(df.options, doc, fieldname, true);
+                    $.each(value_item, function (child_fieldname, child_value) {
+                        var child_df = frappe.meta.has_field(df.options, child_fieldname);
+                        if (!child_df || child_df.no_copy) {
+                            return;
+                        }
+
+                        new_child[child_fieldname] = child_value;
+                    });
 				}
 			});
 			frappe.route_options = null;
@@ -110,7 +129,10 @@ $.extend(frappe.model, {
 				typeof f.options === "string" &&
 				!["[Select]", "Loading..."].includes(f.options)
 			) {
-				doc[f.fieldname] = f.options.split("\n")[0];
+				doc[f.fieldname] = frappe.utils.get_select_option_values(
+					f.options,
+					f.options_has_label
+				)[0];
 			}
 		});
 		return updated;
