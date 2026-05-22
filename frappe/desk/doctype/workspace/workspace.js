@@ -45,7 +45,7 @@ frappe.ui.form.on("Workspace", {
 	},
 
 	add_to_desktop: function (frm) {
-		if (frappe.app.sidebar.get_workspace_sidebars(frm.doc.title).length === 0) {
+		if (frappe.app.sidebar.get_workspace_sidebars(frm.doc.name).length === 0) {
 			frm.add_custom_button(__("Add to Desktop"), function () {
 				frappe.call({
 					method: "frappe.desk.doctype.desktop_icon.desktop_icon.add_workspace_to_desktop",

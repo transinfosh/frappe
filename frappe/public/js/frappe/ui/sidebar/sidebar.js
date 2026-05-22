@@ -257,6 +257,12 @@ frappe.ui.Sidebar = class Sidebar {
 		}
 
 		$(document).trigger("sidebar_setup", { sidebar: this });
+		if (!frappe.boot.workspace_sidebar_item[workspace_title.toLowerCase()]) {
+			workspace_title = this.get_workspace_sidebars(workspace_title)[0] || workspace_title;
+		}
+		if (!frappe.boot.workspace_sidebar_item[workspace_title.toLowerCase()]) {
+			return;
+		}
 		this.sidebar_title = workspace_title;
 		this.check_for_private_workspace(workspace_title);
 		this.workspace_title = this.sidebar_title.toLowerCase();

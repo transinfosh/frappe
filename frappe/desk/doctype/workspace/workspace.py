@@ -129,8 +129,14 @@ class Workspace(Document):
 					delete_folder(previous.get("module"), "Workspace", previous.get("title"))
 
 	def before_export(self, doc):
-		if doc.title != doc.label and doc.label == doc.name:
-			self.name = doc.name = doc.label = doc.title
+		if doc.title and not doc.label:
+			doc.label = doc.title
+
+		if not doc.name and doc.label:
+			doc.name = doc.label
+
+		if not doc.title and doc.name:
+			doc.title = doc.name
 
 	def on_trash(self):
 		if not self.module:

@@ -33,10 +33,12 @@ frappe.ui.sidebar_item.TypeLink = class SidebarItem {
 				path = frappe.utils.generate_route(args);
 			} else if (this.item.link_type == "Workspace") {
 				let workspaces = frappe.workspaces[frappe.router.slug(this.item.link_to)];
-				if (workspaces.public) {
-					path = "/desk/" + frappe.router.slug(this.item.link_to);
-				} else {
-					path = "/desk/private/" + frappe.router.slug(this.item.link_to);
+				if (workspaces) {
+					path = frappe.utils.generate_route({
+						type: "workspace",
+						name: workspaces.name,
+						public: workspaces.public ? 1 : 0,
+					});
 				}
 
 				if (this.item.route) {
