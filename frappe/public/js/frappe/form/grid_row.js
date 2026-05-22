@@ -733,8 +733,12 @@ export default class GridRow {
 		let total_colsize = 0;
 
 		this.grid.visible_columns.forEach((col, ci) => {
-			// to get update df for the row
-			let df = fields.find((field) => field?.fieldname === col[0].fieldname);
+			// Always use per-row docfields so that dynamically set properties (e.g. options,
+			// options_has_label) are reflected in the inline edit control. user_defined_columns
+			// entries are minimal descriptors that lack these properties.
+			let df =
+				this.docfields.find((field) => field?.fieldname === col[0].fieldname) ||
+				fields.find((field) => field?.fieldname === col[0].fieldname);
 
 			this.set_dependant_property(df);
 
@@ -746,7 +750,7 @@ export default class GridRow {
 				: __(df.label, null, df.parent);
 
 			if (this.doc && df.fieldtype === "Select") {
-				txt = __(txt);
+				txt = frappe.utils.get_select_option_label(this.doc[df.fieldname], df);
 			}
 			let column;
 			if (!this.columns[df.fieldname] && !this.show_search) {
