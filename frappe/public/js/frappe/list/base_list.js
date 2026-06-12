@@ -435,7 +435,7 @@ frappe.views.BaseList = class BaseList {
 	set_result_height() {
 		if (this.view !== "List") return;
 		this.$result[0].style.removeProperty("height");
-		// place it at the footer of the page
+		// Scroll inside .result-container; do not stretch .result to full list height.
 
 		let resultContainerHeight = window.innerHeight - this.$paging_area.get(0).offsetHeight;
 		if (!frappe.is_mobile()) {
@@ -445,8 +445,6 @@ frappe.views.BaseList = class BaseList {
 			height: resultContainerHeight - (frappe.is_mobile() ? 100 : 0) + "px",
 		});
 
-		this.$result[0].style.height =
-			Math.max(this.$result[0].offsetHeight, resultContainerHeight) + "px";
 		this.$no_result.css({
 			height: window.innerHeight - this.$no_result.get(0).offsetTop + "px",
 		});

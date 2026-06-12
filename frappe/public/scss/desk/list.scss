@@ -1,9 +1,12 @@
 .layout-main-section-wrapper:not(.disable-scrolling) {
 	.frappe-list {
 		.result-container {
+			overflow: auto;
+			scrollbar-gutter: stable;
 			.result {
 				min-width: 100%;
 				width: auto;
+				overflow: visible;
 				.list-row-container {
 					width: fit-content;
 					min-width: 100%;
@@ -592,9 +595,10 @@ input.list-header-checkbox {
 .list-view {
 	.frappe-list {
 		.result-container {
-			overflow-x: auto;
+			overflow: auto;
+			scrollbar-gutter: stable;
 			.result {
-				overflow-y: hidden;
+				overflow: visible;
 			}
 		}
 	}
