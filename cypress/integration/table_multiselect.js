@@ -45,6 +45,7 @@ context("Table MultiSelect", () => {
 		);
 		cy.get("@existing_value").find(".btn-remove").click();
 		cy.get("@existing_value").should("not.exist");
+		cy.window().its("cur_frm.doc.users").should("have.length", 0);
 	});
 
 	it("navigate to selected value", () => {

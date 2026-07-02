@@ -36,32 +36,34 @@ frappe.ui.form.ControlTableMultiSelect = class ControlTableMultiSelect extends (
 
 			const value = decodeURIComponent($value.data().value);
 			const link_field = this.get_link_field();
+			let removed_row;
 			const rows = this._get_rows().filter((row) => {
 				if (row[link_field.fieldname] !== value) return row;
 
-				frappe.run_serially([
-					() => {
-						return this.frm?.script_manager.trigger(
-							`before_${this.df.fieldname}_remove`,
-							this.df.options,
-							row.name
-						);
-					},
-					() => {
-						frappe.model.clear_doc(this.df.options, row.name);
-
-						this.frm?.dirty();
-						this.refresh();
-
-						return this.frm?.script_manager.trigger(
-							`${this.df.fieldname}_remove`,
-							this.df.options,
-							row.name
-						);
-					},
-				]);
+				removed_row = row;
 			});
-			this._update_rows(rows);
+			if (!removed_row) return;
+
+			frappe.run_serially([
+				() => {
+					return this.frm?.script_manager.trigger(
+						`before_${this.df.fieldname}_remove`,
+						this.df.options,
+						removed_row.name
+					);
+				},
+				() => {
+					frappe.model.clear_doc(this.df.options, removed_row.name);
+					return this.parse_validate_and_set_in_model(rows);
+				},
+				() => {
+					return this.frm?.script_manager.trigger(
+						`${this.df.fieldname}_remove`,
+						this.df.options,
+						removed_row.name
+					);
+				},
+			]);
 		});
 		this.$input_area.on("click", ".btn-link-to-form", (e) => {
 			const $target = $(e.currentTarget);
