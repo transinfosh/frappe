@@ -434,7 +434,10 @@ from {tables}
 				if linked_field.fieldtype == "Link":
 					linked_doctype_obj = self.get_meta(linked_doctype)
 					linked_table = self.append_link_table(
-						linked_doctype, linked_fieldname, linked_doctype_obj.autoname == "autoincrement"
+						linked_doctype,
+						linked_fieldname,
+						linked_doctype_obj.autoname == "autoincrement",
+						ignore_permissions=self._is_link_title_field(linked_doctype, fieldname),
 					)
 					field = f"{linked_table.table_alias}.`{fieldname}`"
 				else:
@@ -596,12 +599,12 @@ from {tables}
 		doctype = table_name[4:-1]
 		self.check_read_permission(doctype)
 
-	def append_link_table(self, doctype, fieldname, name_is_bigint=False):
+	def append_link_table(self, doctype, fieldname, name_is_bigint=False, ignore_permissions=False):
 		for linked_table in self.link_tables:
 			if linked_table.doctype == doctype and linked_table.fieldname == fieldname:
 				return linked_table
-
-		self.check_read_permission(doctype)
+		if not ignore_permissions:
+			self.check_read_permission(doctype)
 		self.linked_table_counter.update((doctype,))
 		linked_table = frappe._dict(
 			doctype=doctype,
@@ -765,6 +768,11 @@ from {tables}
 				if wrap_grave_quotes(table) not in self.query_tables:
 					raise frappe.PermissionError(doctype)
 
+				if table.strip("`") in self.linked_table_aliases and self._is_link_title_field(
+					doctype, column
+				):
+					continue
+
 				if doctype not in permitted_child_table_fields:
 					permitted_child_table_fields[doctype] = set(
 						get_permitted_fields(
@@ -796,6 +804,14 @@ from {tables}
 			# remove if access not allowed
 			else:
 				self.remove_field(i)
+
+	def _is_link_title_field(self, doctype: str, column: str) -> bool:
+		meta = self.get_meta(doctype)
+		title_field = meta.get("title_field")
+
+		return bool(
+			meta.get("show_title_field_in_link") and title_field and column.strip("`") == title_field
+		)
 
 	def prepare_filter_condition(self, ft: FilterTuple) -> str:
 		"""Return a filter condition in the format:

@@ -1407,6 +1407,10 @@ class Engine:
 			elif isinstance(field, LinkTableField):
 				# Check permission for the link field *in the parent doctype*
 				if field.link_fieldname in permitted_fields_set:
+					if field.is_link_title_field():
+						allowed_fields.append(field)
+						continue
+
 					# Also check if user has permission to read/select the target doctype
 					target_doctype = field.doctype
 					has_target_perm = frappe.has_permission(
@@ -2042,6 +2046,12 @@ class LinkTableField(DynamicTableField):
 		self.table = frappe.qb.DocType(self.doctype)
 		self.field = self.table[self.fieldname]
 
+	def is_link_title_field(self) -> bool:
+		meta = frappe.get_meta(self.doctype)
+		title_field = meta.get("title_field")
+
+		return bool(meta.get("show_title_field_in_link") and title_field and self.fieldname == title_field)
+
 	def apply_select(self, query: QueryBuilder, engine: "Engine" = None) -> QueryBuilder:
 		table = frappe.qb.DocType(self.doctype)
 		query = self.apply_join(query, engine=engine)
@@ -2060,7 +2070,7 @@ class LinkTableField(DynamicTableField):
 				)
 
 			query = query.left_join(table).on(link_condition)
-			if engine and engine.apply_permissions:
+			if engine and engine.apply_permissions and not self.is_link_title_field():
 				if condition := engine.get_permission_conditions(self.doctype, table):
 					query = query.where(condition)
 
