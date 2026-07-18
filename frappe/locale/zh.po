@@ -32516,3 +32516,6 @@ msgstr "PATH中未找到{}！执行备份需要此组件"
 msgid "← Back to upload files"
 msgstr "返回上传文件"
 
+#: frappe/public/js/frappe/form/toolbar.js
+msgid "New ID"
+msgstr "新 ID"
