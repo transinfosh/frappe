@@ -665,6 +665,18 @@ frappe.ui.Sidebar = class Sidebar {
 			let sidebars = this.get_workspace_sidebars(entity_name);
 			this.preferred_sidebars = sidebars;
 			let module = router?.meta?.module;
+			if (sidebars.length === 1) {
+				frappe.app.sidebar.setup(sidebars[0]);
+				return;
+			}
+			// 优先使用唯一的已配置侧栏，避免自动生成的模块侧栏覆盖跨 app 挂载
+			const configured_sidebars = sidebars.filter(
+				(sidebar) => frappe.boot.workspace_sidebar_item[sidebar.toLowerCase()].app
+			);
+			if (configured_sidebars.length === 1) {
+				frappe.app.sidebar.setup(configured_sidebars[0]);
+				return;
+			}
 			if (this.sidebar_title && sidebars.includes(this.sidebar_title)) {
 				this.set_active_workspace_item();
 				return;
