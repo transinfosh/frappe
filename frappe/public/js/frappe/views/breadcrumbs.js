@@ -216,11 +216,11 @@ frappe.breadcrumbs = {
 			this.append_breadcrumb_element(
 				`/desk/${route}`,
 				frappe.model.get_translated_doctype_title(doctype_meta),
-				"title-text"
+				"doctype-title"
 			);
 		}
 
-		let list_crumb = this.$breadcrumbs.find("li a.title-text");
+		let list_crumb = this.$breadcrumbs.find("li a.doctype-title");
 		list_crumb.parent().addClass("ellipsis");
 	},
 
