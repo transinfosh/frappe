@@ -283,7 +283,11 @@ class TestResourceAPI(FrappeAPITestCase):
 		self.assertIn(response.status_code, (403, 200))
 
 		if response.status_code == 403:
-			self.assertTrue(set(response.json.keys()) == {"exc_type", "exception", "exc", "_server_messages"})
+			self.assertTrue(
+				set(response.json.keys())
+				== {"message", "exc_type", "exception", "exc", "_server_messages"}
+			)
+			self.assertEqual(response.json.get("message"), "Not permitted")
 			self.assertEqual(response.json.get("exc_type"), "PermissionError")
 			self.assertEqual(
 				response.json.get("exception"), "frappe.exceptions.PermissionError: Not permitted"
@@ -357,6 +361,7 @@ class TestMethodAPI(FrappeAPITestCase):
 		self.assertEqual(get_message(response, "_server_messages").message, expected_message)
 		self.assertEqual(response.json["exc_type"], "ValidationError")
 		self.assertIn("Traceback", response.json["exc"])
+		self.assertEqual(response.json["message"], expected_message)
 
 		# Cause handled failured
 		with suppress_stdout():
@@ -367,6 +372,7 @@ class TestMethodAPI(FrappeAPITestCase):
 		self.assertNotIn("_server_messages", response.json)
 		self.assertIn("ZeroDivisionError", response.json["exception"])  # WHY?
 		self.assertIn("Traceback", response.json["exc"])
+		self.assertEqual(response.json["message"], "Internal Server Error")
 
 	def test_array_response(self):
 		method = "frappe.tests.test_api.test_array"

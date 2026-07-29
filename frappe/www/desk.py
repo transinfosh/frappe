@@ -18,6 +18,8 @@ CLOSING_SCRIPT_TAG_PATTERN = re.compile(r"</script\>")
 
 
 def get_context(context):
+	desk_favicon = frappe.get_hooks("desk_favicon")
+
 	if frappe.session.user == "Guest":
 		frappe.response["status_code"] = 403
 		frappe.msgprint(_("Log in to access this page."))
@@ -57,6 +59,7 @@ def get_context(context):
 			"csrf_token": csrf_token,
 			"google_analytics_id": frappe.conf.get("google_analytics_id"),
 			"google_analytics_anonymize_ip": frappe.conf.get("google_analytics_anonymize_ip"),
+			"favicon": desk_favicon[-1] if desk_favicon else context.get("favicon"),
 			"app_name": (
 				frappe.get_website_settings("app_name") or frappe.get_system_settings("app_name") or "Frappe"
 			),

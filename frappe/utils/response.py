@@ -43,6 +43,7 @@ def report_error(status_code):
 
 	traceback = frappe.utils.get_traceback()
 	exc_type, exc_value, _ = sys.exc_info()
+	frappe.response["message"] = _get_error_message(exc_value, status_code)
 
 	match get_api_version():
 		case ApiVersion.V1:
@@ -62,6 +63,18 @@ def report_error(status_code):
 	response.status_code = status_code
 
 	return response
+
+
+def _get_error_message(exception, status_code):
+	if status_code >= 500:
+		return _("Internal Server Error")
+
+	exception_id = getattr(exception, "__frappe_exc_id", None)
+	for message in reversed(frappe.message_log):
+		if message.get("__frappe_exc_id") == exception_id and message.get("message"):
+			return frappe.utils.strip_html_tags(frappe.utils.cstr(message["message"])).strip()
+
+	return frappe.utils.cstr(exception) or _("Request failed")
 
 
 def is_traceback_allowed():
