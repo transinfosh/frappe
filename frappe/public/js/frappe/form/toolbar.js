@@ -78,7 +78,7 @@ frappe.ui.form.Toolbar = class Toolbar {
 				frappe.utils.set_title(title);
 			} else {
 				if (this.frm.meta.title_field) {
-					frappe.utils.set_title(this.frm.docname + " - " + title + " · " + doctype_title);
+					frappe.utils.set_title(title + " · " + doctype_title);
 				} else {
 					frappe.utils.set_title(this.frm.docname + " · " + doctype_title);
 				}
