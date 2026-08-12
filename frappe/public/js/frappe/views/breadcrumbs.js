@@ -178,7 +178,12 @@ frappe.breadcrumbs = {
 			const view = frappe.model.user_settings[doctype]?.last_view || "Tree";
 			route = `${doctype_route}/view/${view}`;
 		}
-		return [{ label: __(doctype), href: `/desk/${route}` }];
+		return [
+			{
+				label: frappe.model.get_translated_doctype_title(doctype_meta),
+				href: `/desk/${route}`,
+			},
+		];
 	},
 
 	form_items(source, view) {
@@ -189,10 +194,10 @@ frappe.breadcrumbs = {
 
 		let docname_title;
 		if (docname.startsWith("new-" + doctype.toLowerCase().replace(/ /g, "-"))) {
-			docname_title = __("New {0}", [__(doctype)]);
+			docname_title = __("New {0}", [frappe.model.get_translated_doctype_title(doctype)]);
 		} else if (doc) {
 			const title = frappe.model.get_doc_title(doc);
-			docname_title = __(title);
+			docname_title = __(title) || __(doc.name);
 			if (frappe.utils.is_html(docname_title)) {
 				docname_title = strip_html(docname_title);
 			}
