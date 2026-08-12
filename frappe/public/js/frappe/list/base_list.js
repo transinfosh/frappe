@@ -40,8 +40,11 @@ frappe.views.BaseList = class BaseList {
 
 	setup_defaults() {
 		this.page_name = frappe.get_route_str();
-		this.page_title = this.page_title || frappe.router.doctype_layout || __(this.doctype);
 		this.meta = frappe.get_meta(this.doctype);
+		this.page_title =
+			this.page_title ||
+			frappe.router.doctype_layout ||
+			frappe.model.get_translated_doctype_title(this.meta);
 		this.settings = frappe.listview_settings[this.doctype] || {};
 		this.user_settings = frappe.get_user_settings(this.doctype);
 
@@ -446,7 +449,7 @@ frappe.views.BaseList = class BaseList {
 	set_result_height() {
 		if (this.view !== "List") return;
 		this.$result[0].style.removeProperty("height");
-		// place it at the footer of the page
+		// Scroll inside .result-container; do not stretch .result to full list height.
 
 		let $result_container = this.$result.parent(".result-container");
 		let main_rect = $(".main-section").get(0).getBoundingClientRect();
@@ -458,8 +461,6 @@ frappe.views.BaseList = class BaseList {
 			height: resultContainerHeight + "px",
 		});
 
-		this.$result[0].style.height =
-			Math.max(this.$result[0].offsetHeight, resultContainerHeight) + "px";
 		this.$no_result.css({
 			height: window.innerHeight - this.$no_result.get(0).offsetTop + "px",
 		});
@@ -1149,9 +1150,9 @@ class FilterArea {
 
 		if (!this.list_view.settings.hide_name_filter) {
 			let field = {
-				fieldtype: "Data",
+				fieldtype: this.list_view?.meta?.autoname === "autoincrement" ? "Int" : "Data",
 				label: "ID",
-				condition: "like",
+				condition: this.list_view?.meta?.autoname === "autoincrement" ? "=" : "like",
 				fieldname: "name",
 				onchange: () => this.debounced_refresh_list_view(),
 			};
@@ -1223,11 +1224,17 @@ class FilterArea {
 						condition = "like";
 					}
 					if (df.fieldtype == "Select" && df.options) {
-						options = df.options.split("\n");
-						if (options.length > 0 && options[0] != "") {
-							options.unshift("");
-							options = options.join("\n");
+						const select_options = frappe.utils.get_select_options(
+							df.options,
+							df.options_has_label,
+							false,
+							true,
+							df.parent
+						);
+						if (select_options.length > 0 && select_options[0].value !== "") {
+							select_options.unshift({ label: "", value: "" });
 						}
+						options = select_options;
 					}
 					if (
 						df.fieldtype == "Link" &&
@@ -1241,6 +1248,7 @@ class FilterArea {
 						fieldtype: fieldtype,
 						label: __(df.label, null, df.parent),
 						options: options,
+						options_has_label: df.options_has_label,
 						fieldname: df.fieldname,
 						condition: condition,
 						onchange: () => this.debounced_refresh_list_view(),

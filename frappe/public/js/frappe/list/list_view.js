@@ -284,7 +284,9 @@ frappe.views.ListView = class ListView extends frappe.views.BaseList {
 
 	set_primary_action() {
 		if (this.can_create && !frappe.boot.read_only) {
-			const doctype_name = __(frappe.router.doctype_layout) || __(this.doctype);
+			const doctype_name =
+				__(frappe.router.doctype_layout) ||
+				frappe.model.get_translated_doctype_title(this.meta);
 			const add_button_label = __("Add {0}", [doctype_name], "Primary action in list view");
 			const create_button = this.page.set_primary_action(
 				add_button_label,
@@ -531,25 +533,22 @@ frappe.views.ListView = class ListView extends frappe.views.BaseList {
 	}
 
 	get_no_result_message() {
+		let doctype_title = frappe.model.get_translated_doctype_title(this.meta);
 		let help_link = this.get_documentation_link();
 		let filters = this.filter_area && this.filter_area.get();
 
 		let has_filters_set = filters && filters.length;
 		let no_result_message = has_filters_set
 			? __("No {0} found with matching filters. Clear filters to see all {0}.", [
-					__(this.doctype),
+					doctype_title,
 			  ])
 			: this.meta.description
 			? __(this.meta.description)
-			: __("You haven't created a {0} yet", [__(this.doctype)]);
+			: __("You haven't created a {0} yet", [doctype_title]);
 
 		let new_button_label = has_filters_set
-			? __("Create a new {0}", [__(this.doctype)], "Create a new document from list view")
-			: __(
-					"Create your first {0}",
-					[__(this.doctype)],
-					"Create a new document from list view"
-			  );
+			? __("Create a new {0}", [doctype_title], "Create a new document from list view")
+			: __("Create your first {0}", [doctype_title], "Create a new document from list view");
 
 		const new_button = this.can_create
 			? `<p><button class="btn btn-default btn-sm btn-new-doc hidden-xs">
@@ -988,11 +987,13 @@ frappe.views.ListView = class ListView extends frappe.views.BaseList {
 						${frappe.utils.icon("restriction")}
 					</div>`;
 			} else if (df.fieldtype === "Select") {
+				const label = frappe.utils.get_select_option_label(_value, df);
+
 				html = `<span class="${filterable} indicator-pill ${frappe.utils.guess_colour(
 					_value
 				)} ellipsis"
 					data-filter="${fieldname},=,${value}">
-					<span class="ellipsis"> ${__(_value)} </span>
+					<span class="ellipsis"> ${label} </span>
 				</span>`;
 			} else if (df.fieldtype === "Link") {
 				html = `<a class="${filterable} ellipsis "
@@ -1918,7 +1919,7 @@ frappe.views.ListView = class ListView extends frappe.views.BaseList {
 
 		if (only_docnames) return docnames;
 
-		return this.data.filter((d) => docnames.includes(d.name));
+		return this.data.filter((d) => docnames.includes(cstr(d.name)));
 	}
 
 	clear_checked_items() {
@@ -2112,7 +2113,7 @@ frappe.views.ListView = class ListView extends frappe.views.BaseList {
 		fields = fields.concat(default_fields_dict);
 
 		group_by_fields.push({
-			label: __(this.doctype),
+			label: frappe.model.get_translated_doctype_title(this.meta),
 			fieldname: "group_by_fields",
 			fieldtype: "MultiCheck",
 			columns: 2,
