@@ -174,6 +174,7 @@ frappe.ui.form.ControlInput = class ControlInput extends frappe.ui.form.Control 
 		) {
 			value = frappe.utils.escape_html(value);
 		}
+
 		let doc = this.doc || (this.frm && this.frm.doc);
 		let display_value = frappe.format(value, this.df, { no_icon: true, inline: true }, doc);
 		// This is used to display formatted output AND showing values in read only fields

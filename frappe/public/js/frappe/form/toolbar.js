@@ -41,8 +41,11 @@ frappe.ui.form.Toolbar = class Toolbar {
 	}
 	set_title() {
 		let title;
-		if (this.frm.is_new()) {
-			title = __("New {0}", [__(this.frm.meta.name)]);
+		const doctype_title = frappe.model.get_translated_doctype_title(this.frm.meta);
+		if (this.frm.meta.issingle && this.frm.meta.is_virtual) {
+			title = doctype_title;
+		} else if (this.frm.is_new()) {
+			title = __("New {0}", [doctype_title]);
 		} else if (this.frm.meta.title_field) {
 			let title_field = (this.frm.doc[this.frm.meta.title_field] || "").toString().trim();
 			title = strip_html(title_field || this.frm.docname);
@@ -67,8 +70,17 @@ frappe.ui.form.Toolbar = class Toolbar {
 		var me = this;
 		title = __(title);
 		this.page.set_title(title);
-		if (this.frm.meta.title_field) {
-			frappe.utils.set_title(title + " - " + this.frm.docname);
+		if (!this.frm.meta.issingle) {
+			if (this.frm.is_new()) {
+				// title is already "New {DocType}", no need to add doctype prefix again
+				frappe.utils.set_title(title);
+			} else {
+				if (this.frm.meta.title_field) {
+					frappe.utils.set_title(title + " · " + doctype_title);
+				} else {
+					frappe.utils.set_title(this.frm.docname + " · " + doctype_title);
+				}
+			}
 		}
 		this.page.$title_area.toggleClass(
 			"editable-title",
@@ -240,7 +252,7 @@ frappe.ui.form.Toolbar = class Toolbar {
 
 			// check if docname is updatable
 			if (me.can_rename()) {
-				let label = __("New Name");
+				let label = __("New ID");
 				if (me.frm.meta.autoname && me.frm.meta.autoname.startsWith("field:")) {
 					let fieldname = me.frm.meta.autoname.split(":")[1];
 					label = __("New {0}", [__(me.frm.get_docfield(fieldname).label)]);
@@ -248,7 +260,7 @@ frappe.ui.form.Toolbar = class Toolbar {
 				}
 
 				if (!is_title_field_same_as_autoname) {
-					fields.push(
+					fields.unshift(
 						...[
 							{
 								label: label,
@@ -602,7 +614,7 @@ frappe.ui.form.Toolbar = class Toolbar {
 		// New
 		if (p[CREATE] && !this.frm.meta.issingle && !this.frm.meta.in_create) {
 			this.page.add_menu_item(
-				__("New {0}", [__(this.frm.doctype)]),
+				__("New {0}", [frappe.model.get_translated_doctype_title(this.frm.meta)]),
 				() => {
 					frappe.new_doc(this.frm.doctype, true);
 				},

@@ -131,7 +131,7 @@ frappe.ui.form.QuickEntryForm = class QuickEntryForm extends frappe.ui.Dialog {
 			this.docfields = [
 				{
 					fieldname: "__newname",
-					label: __("{0} Name", [__(this.meta.name)]),
+					label: __("{0} Name", [frappe.model.get_translated_doctype_title(this.meta)]),
 					reqd: 1,
 					fieldtype: "Data",
 				},
@@ -175,9 +175,9 @@ frappe.ui.form.QuickEntryForm = class QuickEntryForm extends frappe.ui.Dialog {
 		if (this.title) {
 			return this.title;
 		} else if (this.meta.issingle) {
-			return __(this.doctype);
+			return frappe.model.get_translated_doctype_title(this.meta);
 		} else {
-			return __("New {0}", [__(this.doctype)]);
+			return __("New {0}", [frappe.model.get_translated_doctype_title(this.meta)]);
 		}
 	}
 
@@ -321,8 +321,15 @@ frappe.ui.form.QuickEntryForm = class QuickEntryForm extends frappe.ui.Dialog {
 		if (this.meta.issingle) return;
 
 		let route = frappe.get_route();
+		if (!route) {
+			return;
+		}
+
 		let doc = this.doc;
-		if (route && !(route[0] === "List" && route[1] === doc.doctype)) {
+		if (route[0] === "List" && route[1] === doc.doctype) {
+			//if route is current list view, refresh it
+			frappe.get_list_view(doc.doctype).refresh();
+		} else {
 			frappe.run_serially([() => frappe.set_route("Form", doc.doctype, doc.name)]);
 		}
 	}

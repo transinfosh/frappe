@@ -34089,3 +34089,6 @@ msgstr ""
 msgid "← Back to upload files"
 msgstr ""
 
+#: frappe/public/js/frappe/form/toolbar.js
+msgid "New ID"
+msgstr "新 ID"

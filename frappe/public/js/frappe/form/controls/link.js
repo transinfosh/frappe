@@ -497,14 +497,18 @@ frappe.ui.form.ControlLink = class ControlLink extends frappe.ui.form.ControlDat
 
 				if (!this.df.only_select) {
 					if (frappe.model.can_create(doctype)) {
-						// new item
+						await frappe.model.with_doctype(doctype);
 						r.message.push({
 							html:
 								"<span class='link-option'>" +
 								"<i class='fa fa-plus' style='margin-right: 5px;'></i> " +
-								__("Create a new {0}", [__(this.get_options())]) +
+								__("Create a new {0}", [
+									frappe.model.get_translated_doctype_title(doctype),
+								]) +
 								"</span>",
-							label: __("Create a new {0}", [__(this.get_options())]),
+							label: __("Create a new {0}", [
+								frappe.model.get_translated_doctype_title(doctype),
+							]),
 							value: "create_new__link_option",
 							action: this.new_doc,
 						});
@@ -583,6 +587,9 @@ frappe.ui.form.ControlLink = class ControlLink extends frappe.ui.form.ControlDat
 
 		// convert object style to array
 		if (!Array.isArray(filters)) {
+			if (typeof filters === "object" && Object.keys(filters).length === 0) {
+				return null;
+			}
 			for (let fieldname in filters) {
 				let value = filters[fieldname];
 				if (!Array.isArray(value)) {

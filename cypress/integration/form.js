@@ -48,6 +48,7 @@ context("Form", () => {
 		}).as("form_save");
 		cy.get(".primary-action").click();
 		cy.wait("@form_save").its("response.statusCode").should("eq", 200);
+		cy.title().should("eq", "this is a test todo · To Do");
 
 		cy.go_to_list("ToDo");
 		cy.clear_filters();

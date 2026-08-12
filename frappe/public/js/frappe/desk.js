@@ -409,9 +409,39 @@ frappe.Application = class Application {
 		)}`;
 	}
 	set_favicon() {
-		var link = $('link[type="image/x-icon"]').remove().attr("href");
-		$('<link rel="shortcut icon" href="' + link + '" type="image/x-icon">').appendTo("head");
-		$('<link rel="icon" href="' + link + '" type="image/x-icon">').appendTo("head");
+		this.default_favicon = $('link[type="image/x-icon"]').first().attr("href");
+		this.update_favicon();
+		$(document).on("page-change", () => this.update_favicon());
+	}
+
+	update_favicon() {
+		const route = frappe.get_route() || [];
+		let module;
+		let app_name;
+
+		if (["Form", "List", "Tree"].includes(route[0]) && route[1]) {
+			module = frappe.get_meta(route[1])?.module;
+		} else if (route[0] === "Workspaces") {
+			const workspace = route[1] === "private" ? route[2] : route[1];
+			const workspace_page = workspace && frappe.workspaces[frappe.router.slug(workspace)];
+			module = workspace_page?.module;
+			app_name = frappe.boot.app_data.find((app) =>
+				app.workspaces.includes(workspace_page?.name)
+			)?.app_name;
+		} else {
+			module = locals.Page?.[route[0]]?.module;
+		}
+
+		app_name = app_name || (module && frappe.boot.module_app[frappe.scrub(module)]);
+		const app = frappe.boot.app_data.find((app) => app.app_name === app_name);
+		const app_logo = Array.isArray(app?.app_logo_url)
+			? app.app_logo_url.at(-1)
+			: app?.app_logo_url;
+		const link = app_logo || this.default_favicon;
+
+		$('link[rel~="icon"]').remove();
+		$("<link>", { rel: "shortcut icon", href: link, type: "image/x-icon" }).appendTo("head");
+		$("<link>", { rel: "icon", href: link, type: "image/x-icon" }).appendTo("head");
 	}
 	trigger_primary_action() {
 		// to trigger change event on active input before triggering primary action

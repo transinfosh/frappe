@@ -149,7 +149,7 @@ def search_widget(
 				ignore_user_permissions=ignore_user_permissions,
 				link_fieldname=link_fieldname,
 			)
-		except (frappe.PermissionError, frappe.AppNotInstalledError, ImportError):
+		except frappe.PermissionError, frappe.AppNotInstalledError, ImportError:
 			if frappe.local.conf.developer_mode:
 				raise
 			else:
@@ -207,7 +207,9 @@ def search_widget(
 
 		for f in search_fields:
 			fmeta = meta.get_field(f.strip())
-			if not meta.translated_doctype and (f == "name" or (fmeta and fmeta.fieldtype in field_types)):
+			if f == "name" and meta.autoname == "autoincrement":
+				or_filters.append([doctype, f.strip(), "=", txt if txt and txt.isdigit() else 0])
+			elif not meta.translated_doctype and (f == "name" or (fmeta and fmeta.fieldtype in field_types)):
 				or_filters.append([doctype, f.strip(), "like", f"%{txt}%"])
 
 	if not include_disabled:
@@ -232,8 +234,11 @@ def search_widget(
 
 	if not for_link_validation and not meta.translated_doctype:
 		_txt = frappe.db.escape((txt or "").replace("%", "").replace("@", ""))
+		# For MariaDB, cast bigint fields to string is CAST(name as CHAR), for Postgres/SQLite, use CAST(name as VARCHAR).
+		_string_type = '"CHAR"' if frappe.db.db_type == "mariadb" else '"VARCHAR"'
+		_name_field = "name" if meta.autoname != "autoincrement" else {"CAST": ["name", _string_type]}
 		# locate returns 0 if string is not found, convert 0 to null and then sort null to end in order by
-		_relevance_expr = {"DIV": [1, {"NULLIF": [{"LOCATE": [_txt, "name"]}, 0]}]}
+		_relevance_expr = {"DIV": [1, {"NULLIF": [{"LOCATE": [_txt, _name_field]}, 0]}]}
 
 		# For MariaDB, wrap in IFNULL for sorting to push nulls to end
 		_relevance = {"IFNULL": [_relevance_expr, -9999], "as": "_relevance"}
@@ -425,7 +430,7 @@ def scrub_custom_query(query, key, txt):
 
 
 def relevance_sorter(key, query, as_dict):
-	value = _(key.name if as_dict else key[0])
+	value = _(key._relevance or key.name if as_dict else key[0])
 	return (cstr(value).casefold().startswith(query.casefold()) is not True, value)
 
 
@@ -479,6 +484,10 @@ def get_user_groups():
 
 @frappe.whitelist()
 def get_link_title(doctype: str, docname: str | int):
+	docname = cstr(docname).strip()
+	if docname.lower() in {"", "null", "undefined"}:
+		return None
+
 	meta = frappe.get_meta(doctype)
 
 	if meta.show_title_field_in_link:

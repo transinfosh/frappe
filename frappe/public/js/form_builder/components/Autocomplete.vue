@@ -25,7 +25,7 @@
 					v-slot="{ active }"
 				>
 					<li :class="['combo-box-option', active ? 'active' : '']">
-						{{ __(field.label) }}
+						{{ translate_labels ? __(field.label) : field.value }}
 					</li>
 				</ComboboxOption>
 			</div>
@@ -53,6 +53,10 @@ const props = defineProps({
 	show: {
 		type: Boolean,
 		default: false,
+	},
+	translate_labels: {
+		type: Boolean,
+		default: true,
 	},
 });
 
@@ -87,7 +91,9 @@ const selectedValue = computed({
 const filteredOptions = computed(() => {
 	if (!query.value) return props.options;
 	return props.options.filter((option) => {
-		return option.label.toLocaleLowerCase().includes(query.value.toLocaleLowerCase());
+		return props.translate_labels
+			? option.label.toLocaleLowerCase().includes(query.value.toLocaleLowerCase())
+			: option.value.toLocaleLowerCase().includes(query.value.toLocaleLowerCase());
 	});
 });
 

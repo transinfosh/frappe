@@ -212,6 +212,47 @@ $.extend(frappe.model, {
 		return docfield[0];
 	},
 
+	get_doctype_title(doctype) {
+		const meta = typeof doctype === "string" ? frappe.get_meta(doctype) : doctype;
+		return meta?.title || meta?.name || doctype;
+	},
+
+	get_translated_doctype_title(doctype) {
+		return __(frappe.model.get_doctype_title(doctype));
+	},
+
+	get_from_localstorage: function (doctype) {
+		if (localStorage["_doctype:" + doctype]) {
+			return JSON.parse(localStorage["_doctype:" + doctype]);
+		}
+	},
+
+	set_in_localstorage: function (doctype, docs) {
+		try {
+			localStorage["_doctype:" + doctype] = JSON.stringify(docs);
+
+			//缓存子表
+			docs.forEach((doc) => {
+				if (doc.name !== doctype) {
+					localStorage["_doctype:" + doc.name] = JSON.stringify([doc]);
+				}
+			});
+		} catch (e) {
+			// if quota is exceeded, clear local storage and set item
+			console.warn("localStorage quota exceeded, clearing doctype cache");
+			frappe.model.clear_local_storage();
+			localStorage["_doctype:" + doctype] = JSON.stringify(docs);
+		}
+	},
+
+	clear_local_storage: function () {
+		for (var key in localStorage) {
+			if (key.startsWith("_doctype:")) {
+				localStorage.removeItem(key);
+			}
+		}
+	},
+
 	with_doctype: function (doctype, callback, async) {
 		if (locals.DocType[doctype]) {
 			callback && callback();
@@ -554,8 +595,8 @@ $.extend(frappe.model, {
 		*/
 		/* example: frappe.model.on("Customer", "age", function(fieldname, value, doc) {
 		  if(doc.age < 16) {
-		   	frappe.msgprint("Warning, Customer must atleast be 16 years old.");
-		    raise "CustomerAgeError";
+				  frappe.msgprint("Warning, Customer must atleast be 16 years old.");
+			raise "CustomerAgeError";
 		  }
 		}) */
 		frappe.provide("frappe.model.events." + doctype);
@@ -627,11 +668,13 @@ $.extend(frappe.model, {
 	get_doc_title(doc) {
 		if (typeof doc.name == "string") {
 			if (doc.name.startsWith("new-" + doc.doctype.toLowerCase().replace(/ /g, "-"))) {
-				return __("New {0}", [__(doc.doctype)]);
+				return __("New {0}", [frappe.model.get_translated_doctype_title(doc.doctype)]);
 			}
 		}
 		let meta = frappe.get_meta(doc.doctype);
-		if (meta.title_field) {
+		if (meta.issingle) {
+			return frappe.model.get_doctype_title(meta);
+		} else if (meta.title_field) {
 			return doc[meta.title_field];
 		} else {
 			return String(doc.name);

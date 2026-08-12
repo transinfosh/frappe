@@ -213,15 +213,20 @@ frappe.breadcrumbs = {
 			} else {
 				route = doctype_route;
 			}
-			this.append_breadcrumb_element(`/desk/${route}`, __(doctype), "title-text");
+			this.append_breadcrumb_element(
+				`/desk/${route}`,
+				frappe.model.get_translated_doctype_title(doctype_meta),
+				"doctype-title"
+			);
 		}
 
-		let list_crumb = this.$breadcrumbs.find("li a.title-text");
+		let list_crumb = this.$breadcrumbs.find("li a.doctype-title");
 		list_crumb.parent().addClass("ellipsis");
 	},
 
 	set_form_breadcrumb(breadcrumbs, view) {
 		const doctype = breadcrumbs.doctype;
+		const doctype_meta = frappe.get_meta(doctype);
 		let docname = frappe.get_route().slice(2).join("/");
 		let doc = frappe.get_doc(doctype, docname);
 		let form_route = `/desk/${frappe.router.slug(doctype)}/${encodeURIComponent(docname)}`;
@@ -229,7 +234,9 @@ frappe.breadcrumbs = {
 		let docname_title;
 		let is_new_doc = false;
 		if (docname.startsWith("new-" + doctype.toLowerCase().replace(/ /g, "-"))) {
-			docname_title = __("New {0}", [__(doctype)]);
+			docname_title = __("New {0}", [
+				frappe.model.get_translated_doctype_title(doctype_meta),
+			]);
 			is_new_doc = true;
 		} else {
 			let title = frappe.model.get_doc_title(doc);
