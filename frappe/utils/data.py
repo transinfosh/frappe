@@ -374,6 +374,11 @@ def now_datetime() -> datetime.datetime:
 	return datetime.datetime.now(ZoneInfo(get_system_timezone())).replace(tzinfo=None)
 
 
+def today_date() -> datetime.date:
+	"""Return the current date in system timezone."""
+	return now_datetime().date()
+
+
 def get_timestamp(date: DateTimeLikeObject | None = None) -> float:
 	"""Return the Unix timestamp (seconds since Epoch) for the given `date`.
 	If `date` is None, the current timestamp is returned.
@@ -733,7 +738,7 @@ def format_date(string_date=None, format_string: str | None = None, parse_day_fi
 		formatted_date = babel.dates.format_date(
 			date, format_string, locale=(frappe.local.lang or "").replace("-", "_")
 		)
-	except (UnknownLocaleError, ValueError):
+	except UnknownLocaleError, ValueError:
 		format_string = format_string.replace("MM", "%m").replace("dd", "%d").replace("yyyy", "%Y")
 		formatted_date = date.strftime(format_string)
 	return formatted_date
@@ -765,7 +770,7 @@ def format_time(time_string=None, format_string: str | None = None) -> str:
 		formatted_time = babel.dates.format_time(
 			time_, format_string, locale=(frappe.local.lang or "").replace("-", "_")
 		)
-	except (UnknownLocaleError, ValueError):
+	except UnknownLocaleError, ValueError:
 		formatted_time = time_.strftime("%H:%M:%S")
 	return formatted_time
 
@@ -793,7 +798,7 @@ def format_datetime(datetime_string: DateTimeLikeObject, format_string: str | No
 		formatted_datetime = babel.dates.format_datetime(
 			datetime, format_string, locale=(frappe.local.lang or "").replace("-", "_")
 		)
-	except (UnknownLocaleError, ValueError):
+	except UnknownLocaleError, ValueError:
 		formatted_datetime = datetime.strftime("%Y-%m-%d %H:%M:%S")
 	return formatted_datetime
 
@@ -2135,6 +2140,36 @@ def get_absolute_url(doctype: str, name: str) -> str:
 	return f"/desk/{quoted(slug(doctype))}/{quote(cstr(name), safe='')}"
 
 
+def get_select_options(options: str, options_has_label: bool = False, remove_empty: bool = False) -> list:
+	options = options or ""
+	options = [d.strip() for d in options.split("\n") if d.strip() or not remove_empty]
+
+	if not options_has_label:
+		return options
+
+	for i in range(0, len(options)):
+		options[i] = options[i].split(",")[0].strip()
+
+	return options
+
+
+def get_select_option_labels(
+	options: str, options_has_label: bool = False, remove_empty: bool = False
+) -> list:
+	options = options or ""
+	options = [d.strip() for d in options.split("\n") if d.strip() or not remove_empty]
+
+	if not options_has_label:
+		return options
+
+	for i in range(0, len(options)):
+		idx = options[i].find(",")
+		if idx >= 0:
+			options[i] = options[i][idx + 1 :].strip()
+
+	return options
+
+
 def get_url_to_form(doctype: str, name: str | None = None) -> str:
 	"""Return the absolute URL for the form view of the given document in the desk.
 
@@ -2746,7 +2781,7 @@ def guess_date_format(date_string: str) -> str:
 def validate_json_string(string: str) -> None:
 	try:
 		orjson.loads(string)
-	except (TypeError, ValueError):
+	except TypeError, ValueError:
 		raise frappe.ValidationError
 
 

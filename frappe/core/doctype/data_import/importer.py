@@ -17,6 +17,7 @@ from frappe.utils import cint, cstr, duration_to_seconds, flt, update_progress_b
 from frappe.utils.caching import request_cache
 from frappe.utils.csvutils import get_csv_content_from_google_sheets, read_csv_content
 from frappe.utils.data import escape_html
+from frappe.utils.data import get_select_options as get_select_option_values
 from frappe.utils.html_utils import clean_html
 from frappe.utils.number_format import NumberFormat
 from frappe.utils.xlsxutils import (
@@ -2335,7 +2336,7 @@ def df_as_json(df):
 
 
 def get_select_options(df):
-	return [d for d in (df.options or "").split("\n") if d]
+	return get_select_option_values(df.options, df.get("options_has_label"), True)
 
 
 def create_import_log(data_import, log_index, log_details):

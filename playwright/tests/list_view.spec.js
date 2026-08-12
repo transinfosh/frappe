@@ -1,14 +1,49 @@
 import { test, expect } from "../support";
 
+const SELECT_LABEL_FILTER_DOCTYPE = "Test Select Label Filter";
 const CHECK_ALL = ".list-header-subject .list-subject .list-check-all";
 
 test.describe("List View", () => {
 	test.beforeAll(async ({ admin }) => {
 		await admin.call("frappe.tests.ui_test_helpers.setup_workflow");
+		await admin.call("frappe.tests.ui_test_helpers.create_doctype", {
+			name: SELECT_LABEL_FILTER_DOCTYPE,
+			fields: [
+				{
+					label: "Status",
+					fieldname: "status",
+					fieldtype: "Select",
+					options: "\n1,Pending Inspection\n2,Approved",
+					options_has_label: 1,
+					in_standard_filter: 1,
+				},
+			],
+		});
 	});
 
 	test.afterAll(async ({ admin }) => {
 		await admin.remove_doc("Workflow", "Test ToDo", true);
+		await admin.remove_doc("DocType", SELECT_LABEL_FILTER_DOCTYPE, true);
+	});
+
+	test("shows labels in standard filters for Select fields with labeled options", async ({
+		page,
+		desk,
+	}) => {
+		await desk.go_to_list(SELECT_LABEL_FILTER_DOCTYPE);
+		await desk.clear_filters();
+		const status_filter = page.locator(
+			'.standard-filter-section [data-fieldname="status"] select'
+		);
+		await expect(status_filter).toBeVisible();
+		await expect(status_filter.locator('option[value="1"]')).toHaveText("Pending Inspection");
+		await expect(status_filter.locator('option[value="2"]')).toHaveText("Approved");
+
+		await status_filter.selectOption({ label: "Pending Inspection" });
+		await expect(status_filter).toHaveValue("1");
+		await expect
+			.poll(() => page.evaluate(() => cur_list.filter_area.get_standard_filters()))
+			.toContainEqual([SELECT_LABEL_FILTER_DOCTYPE, "status", "=", "1"]);
 	});
 
 	test("Keep checkbox checked after Refresh", async ({ page, desk }) => {

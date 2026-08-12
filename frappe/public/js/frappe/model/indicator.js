@@ -82,7 +82,13 @@ frappe.get_indicator = function (doc, doctype, show_workflow_state) {
 	if (doc.status && meta && meta.states && meta.states.find((d) => d.title === doc.status)) {
 		let state = meta.states.find((d) => d.title === doc.status);
 		let color_class = frappe.scrub(state.color, "-");
-		return [__(doc.status, null, doctype), color_class, "status,=," + doc.status];
+		let df = meta.fields.find((x) => x.fieldname === "status");
+		let status_txt =
+			df?.fieldtype === "Select"
+				? frappe.utils.get_select_option_label(doc.status, df, true, doctype)
+				: __(doc.status, null, doctype);
+
+		return [status_txt, color_class, "status,=," + doc.status];
 	}
 
 	if (settings.get_indicator) {
@@ -97,11 +103,13 @@ frappe.get_indicator = function (doc, doctype, show_workflow_state) {
 
 	// based on status
 	if (doc.status) {
-		return [
-			__(doc.status, null, doctype),
-			frappe.utils.guess_colour(doc.status),
-			"status,=," + doc.status,
-		];
+		let df = meta.fields.find((x) => x.fieldname === "status");
+		let status_txt =
+			df?.fieldtype === "Select"
+				? frappe.utils.get_select_option_label(doc.status, df, true, doctype)
+				: __(doc.status, null, doctype);
+
+		return [status_txt, frappe.utils.guess_colour(doc.status), "status,=," + doc.status];
 	}
 
 	// based on enabled
