@@ -283,7 +283,10 @@ class TestResourceAPI(FrappeAPITestCase):
 		self.assertIn(response.status_code, (403, 200))
 
 		if response.status_code == 403:
-			self.assertTrue(set(response.json.keys()) == {"exc_type", "exception", "exc", "_server_messages"})
+			self.assertTrue(
+				set(response.json.keys()) == {"message", "exc_type", "exception", "exc", "_server_messages"}
+			)
+			self.assertEqual(response.json.get("message"), "Not permitted")
 			self.assertEqual(response.json.get("exc_type"), "PermissionError")
 			self.assertEqual(
 				response.json.get("exception"), "frappe.exceptions.PermissionError: Not permitted"
@@ -372,6 +375,7 @@ class TestMethodAPI(FrappeAPITestCase):
 		self.assertEqual(get_message(response, "_server_messages").message, expected_message)
 		self.assertEqual(response.json["exc_type"], "ValidationError")
 		self.assertIn("Traceback", response.json["exc"])
+		self.assertEqual(response.json["message"], expected_message)
 
 		# Cause handled failured
 		with suppress_stdout():
@@ -382,6 +386,7 @@ class TestMethodAPI(FrappeAPITestCase):
 		self.assertNotIn("_server_messages", response.json)
 		self.assertIn("ZeroDivisionError", response.json["exception"])  # WHY?
 		self.assertIn("Traceback", response.json["exc"])
+		self.assertEqual(response.json["message"], "Internal Server Error")
 
 	def test_array_response_v1(self):
 		method = "frappe.tests.test_api.test_array"
@@ -448,6 +453,51 @@ def after_request(*args, **kwargs):
 
 
 class TestAPIResponse(FrappeAPITestCase):
+	def test_download_pdf_uses_print_format_pdf_generator_by_default(self):
+		from frappe.utils import print_format as print_format_utils
+
+		doc = frappe.get_doc("User", "Guest")
+
+		with (
+			patch.object(print_format_utils, "validate_print_permission"),
+			patch.object(frappe, "get_doc", return_value=doc),
+			patch.object(frappe, "get_print", return_value=b"pdf-bytes") as mock_get_print,
+		):
+			print_format_utils.download_pdf("User", "Guest")
+
+		self.assertEqual(frappe.local.response.filecontent, b"pdf-bytes")
+		self.assertEqual(frappe.local.response.type, "pdf")
+		self.assertEqual(frappe.local.response.filename, "Guest.pdf")
+		self.assertIsNone(mock_get_print.call_args.kwargs["pdf_generator"])
+
+	def test_get_print_uses_default_print_format_for_pdf_generator_hook(self):
+		from frappe.utils import print_utils
+
+		doc = frappe.get_doc("User", "Guest")
+
+		with (
+			patch.object(print_utils.frappe.local, "form_dict", frappe._dict(), create=True),
+			patch.object(print_utils.frappe, "get_meta") as mock_get_meta,
+			patch.object(print_utils.frappe, "get_cached_value") as mock_get_cached_value,
+			patch.object(
+				print_utils.frappe,
+				"get_hooks",
+				side_effect=lambda hook: ["test.pdf.hook"] if hook == "pdf_generator" else [],
+			),
+			patch("frappe.website.serve.get_response_without_exception_handling") as mock_response,
+			patch.object(print_utils.frappe, "call", return_value=b"pdf-bytes") as mock_call,
+		):
+			mock_get_meta.return_value = frappe._dict(default_print_format="Inspection Report")
+			mock_get_cached_value.return_value = "chrome"
+			mock_response.return_value = frappe._dict(data=b"<html></html>")
+
+			result = print_utils.get_print("User", "Guest", doc=doc, as_pdf=True)
+
+		self.assertEqual(result, b"pdf-bytes")
+		mock_get_cached_value.assert_called_once_with("Print Format", "Inspection Report", "pdf_generator")
+		self.assertEqual(mock_call.call_args.kwargs["print_format"], "Inspection Report")
+		self.assertEqual(mock_call.call_args.kwargs["pdf_generator"], "chrome")
+
 	def test_generate_pdf_v1(self):
 		response = self.get(
 			"/api/method/frappe.utils.print_format.download_pdf",

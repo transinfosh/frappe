@@ -46,6 +46,13 @@ def get_print(
 	from frappe.website.serve import get_response_without_exception_handling
 
 	local = frappe.local
+
+	if not print_format:
+		if doctype:
+			print_format = frappe.get_meta(doctype).default_print_format or "Standard"
+		else:
+			print_format = "Standard"
+
 	if "pdf_generator" not in local.form_dict:
 		# if arg is passed, use that, else get setting from print format
 		if pdf_generator is None:

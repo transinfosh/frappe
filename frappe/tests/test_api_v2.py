@@ -260,6 +260,7 @@ class TestMethodAPIV2(FrappeAPITestCase):
 		self.assertEqual(response["errors"][0]["message"], expected_message)
 		self.assertEqual(response["errors"][0]["type"], "ValidationError")
 		self.assertIn("Traceback", response["errors"][0]["exception"])
+		self.assertEqual(response["message"], expected_message)
 
 		# Cause handled failured
 		with suppress_stdout():
@@ -271,6 +272,7 @@ class TestMethodAPIV2(FrappeAPITestCase):
 		self.assertIsInstance(response["errors"], list)
 		self.assertEqual(response["errors"][0]["type"], "ZeroDivisionError")
 		self.assertIn("Traceback", response["errors"][0]["exception"])
+		self.assertEqual(response["message"], "Internal Server Error")
 
 	def test_add_comment_v2(self):
 		comment_txt = frappe.generate_hash()
