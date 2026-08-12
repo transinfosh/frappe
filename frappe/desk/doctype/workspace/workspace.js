@@ -8,7 +8,6 @@ frappe.ui.form.on("Workspace", {
 
 	refresh: function (frm) {
 		frm.enable_save();
-		frm.trigger("add_to_desktop");
 		let url = `/desk/${
 			frm.doc.public
 				? frappe.router.slug(frm.doc.name)
