@@ -33,10 +33,12 @@ frappe.ui.sidebar_item.TypeLink = class SidebarItem {
 				path = frappe.utils.generate_route(args);
 			} else if (this.item.link_type == "Workspace") {
 				let workspaces = frappe.workspaces[frappe.router.slug(this.item.link_to)];
-				if (workspaces && workspaces.public) {
-					path = "/desk/" + frappe.router.slug(this.item.link_to);
-				} else {
-					path = "/desk/private/" + frappe.router.slug(this.item.link_to);
+				if (workspaces) {
+					path = frappe.utils.generate_route({
+						type: "workspace",
+						name: workspaces.name,
+						public: workspaces.public ? 1 : 0,
+					});
 				}
 
 				if (this.item.route) {
@@ -276,7 +278,7 @@ frappe.ui.sidebar_item.TypeSectionBreak = class SectionBreakSidebarItem extends 
 		const me = this;
 		let current_sidebar_state = this.section_breaks_state[this.workspace_title];
 		for (const [element_name, collapsed] of Object.entries(current_sidebar_state)) {
-			if ($(this.wrapper).attr("title") == element_name) {
+			if (this.item.label == element_name) {
 				me.collapsed = collapsed;
 				me.toggle();
 			}
@@ -303,8 +305,7 @@ frappe.ui.sidebar_item.TypeSectionBreak = class SectionBreakSidebarItem extends 
 			this.section_breaks_state[this.workspace_title] = {};
 		}
 
-		const title = this.wrapper.attr("title");
-		this.section_breaks_state[this.workspace_title][title] = this.collapsed;
+		this.section_breaks_state[this.workspace_title][this.item.label] = this.collapsed;
 
 		localStorage.setItem("section-breaks-state", JSON.stringify(this.section_breaks_state));
 	}

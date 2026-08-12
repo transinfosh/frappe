@@ -281,6 +281,12 @@ frappe.ui.Sidebar = class Sidebar {
 		}
 
 		$(document).trigger("sidebar_setup", { sidebar: this });
+		if (!frappe.boot.workspace_sidebar_item[workspace_title.toLowerCase()]) {
+			workspace_title = this.get_workspace_sidebars(workspace_title)[0] || workspace_title;
+		}
+		if (!frappe.boot.workspace_sidebar_item[workspace_title.toLowerCase()]) {
+			return;
+		}
 		this.sidebar_title = workspace_title;
 		this.check_for_private_workspace(workspace_title);
 		this.workspace_title = this.sidebar_title.toLowerCase();
@@ -709,6 +715,18 @@ frappe.ui.Sidebar = class Sidebar {
 	resolve_sidebar(entity, module) {
 		let candidates = this.get_workspace_sidebars(entity);
 		this.preferred_sidebars = candidates;
+		if (candidates.length === 1) {
+			return candidates[0];
+		}
+
+		// Prefer the only explicitly configured sidebar over an auto-generated
+		// module sidebar when an entity is mounted across apps.
+		const configured_candidates = candidates.filter(
+			(candidate) => frappe.boot.workspace_sidebar_item[candidate.toLowerCase()]?.app
+		);
+		if (configured_candidates.length === 1) {
+			return configured_candidates[0];
+		}
 
 		const remembered = JSON.parse(localStorage.getItem("sidebar_item_map") || "{}");
 

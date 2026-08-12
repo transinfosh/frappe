@@ -76,7 +76,7 @@ function get_route(desktop_icon) {
 					if (workspaces) {
 						let args = {
 							type: "workspace",
-							name: workspaces.title,
+							name: workspaces.name,
 							public: workspaces.public ? 1 : 0,
 							route_options: {
 								sidebar: desktop_icon.label,
