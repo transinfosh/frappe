@@ -94,6 +94,13 @@ def get_print(
 	from frappe.website.serve import get_response_without_exception_handling
 
 	local = frappe.local
+
+	if not print_format:
+		if doctype:
+			print_format = frappe.get_meta(doctype).default_print_format or "Standard"
+		else:
+			print_format = "Standard"
+
 	pf_doc = _print_format_doc_or_none(print_format)
 	generator = local.form_dict.get("pdf_generator")
 	if not generator or (uses_beta_renderer(pf_doc) and generator not in GENERATOR_ENGINES):
