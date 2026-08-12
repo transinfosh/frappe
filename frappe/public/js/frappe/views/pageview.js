@@ -111,6 +111,9 @@ frappe.views.Page = class Page {
 			me.trigger_page_event("on_page_show");
 			me.trigger_page_event("refresh");
 		});
+		$(this.wrapper).on("hide", function () {
+			me.trigger_page_event("on_page_hide");
+		});
 	}
 
 	trigger_page_event(eventname) {

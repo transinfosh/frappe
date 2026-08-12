@@ -41,6 +41,11 @@ body {
 	overflow-x: hidden;
 	overflow-y: visible;
 	scrollbar-gutter: stable;
+
+	&.has-internal-scroll {
+		overflow: hidden;
+		scrollbar-gutter: auto;
+	}
 }
 .sticky-top {
 	z-index: 1019;

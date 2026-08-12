@@ -9,6 +9,7 @@
  * @param {string} opts.parent [HTMLElement] Parent element
  * @param {boolean} opts.single_column Whether to include sidebar
  * @param {string} [opts.sidebar_position] Position of sidebar (default None, "Left" or "Right")
+ * @param {"document" | "internal"} [opts.scroll_mode] Scroll owner (default "document")
  * @param {string} [opts.title] Page title
  * @param {Object} [opts.make_page]
  *
@@ -42,10 +43,23 @@ frappe.ui.Page = class Page {
 
 	make() {
 		this.wrapper = $(this.parent);
+		this.setup_scroll_mode();
 		this.add_main_section();
 		this.setup_scroll_handler();
 		this.setup_main_sidebar_toggle();
 		this.setup_mobile_awesomebar();
+	}
+
+	setup_scroll_mode() {
+		if (this.scroll_mode !== "internal") return;
+
+		const $main_section = this.wrapper.closest(".main-section");
+		this.wrapper.on("show.internal-scroll", () => {
+			$main_section.addClass("has-internal-scroll");
+		});
+		this.wrapper.on("hide.internal-scroll", () => {
+			$main_section.removeClass("has-internal-scroll");
+		});
 	}
 
 	setup_mobile_awesomebar() {
