@@ -50,9 +50,10 @@ frappe.ui.form.on("DocType", {
 		}
 
 		if (!frm.is_new() && !frm.doc.istable) {
+			const doctype_title = frappe.model.get_doc_title(frm.doc) || frm.doc.name;
 			const button_text = frm.doc.issingle
-				? __("Go to {0}", [__(frm.doc.name)])
-				: __("Go to {0} List", [__(frm.doc.name)]);
+				? __("Go to {0}", [__(doctype_title)])
+				: __("Go to {0} List", [__(doctype_title)]);
 			frm.add_custom_button(button_text, () => {
 				window.open(`/desk/${frappe.router.slug(frm.doc.name)}`);
 			});

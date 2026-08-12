@@ -199,6 +199,31 @@ class TestRenameDoc(IntegrationTestCase):
 		new_name = "ToDo"
 		self.assertEqual(new_name, frappe.rename_doc("Renamed Doc", old_name, new_name, force=True))
 
+	def test_rename_single_doctype(self):
+		"""Rename Single DocType and update Singles rows."""
+		old_doctype = "Test Rename Single Old"
+		new_doctype_name = "Test Rename Single New"
+
+		frappe.delete_doc_if_exists("DocType", new_doctype_name)
+		frappe.delete_doc_if_exists("DocType", old_doctype)
+
+		try:
+			new_doctype(old_doctype, issingle=1).insert()
+			frappe.db.set_single_value(old_doctype, "some_fieldname", "single value")
+
+			self.assertEqual(
+				new_doctype_name, frappe.rename_doc("DocType", old_doctype, new_doctype_name, force=True)
+			)
+
+			self.assertEqual(frappe.db.get_single_value(new_doctype_name, "some_fieldname"), "single value")
+			singles = frappe.qb.DocType("Singles")
+			self.assertFalse(
+				frappe.qb.from_(singles).select(singles.doctype).where(singles.doctype == old_doctype).run()
+			)
+		finally:
+			frappe.delete_doc_if_exists("DocType", new_doctype_name)
+			frappe.delete_doc_if_exists("DocType", old_doctype)
+
 	def test_update_document_title_api(self):
 		test_doctype = "Module Def"
 		test_doc = frappe.get_doc(
