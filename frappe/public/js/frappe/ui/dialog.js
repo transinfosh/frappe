@@ -391,12 +391,15 @@ frappe.ui.Dialog = class Dialog extends frappe.ui.FieldGroup {
 		$("body").css("overflow", bool ? "hidden" : "auto");
 	}
 
-	add_custom_action(label, action, css_class = null) {
+	add_custom_action(label, action, css_class = null, title = null) {
 		this.footer.removeClass("hide");
 		let action_button = frappe.ui.button({
 			label,
+			title,
 			css_class: css_class || "",
 		});
+		// Existing callers pass markup for custom action labels (for example, navigation icons).
+		action_button.find(".es-button__label").html(label);
 		this.custom_actions.append(action_button);
 
 		action && action_button.click(action);

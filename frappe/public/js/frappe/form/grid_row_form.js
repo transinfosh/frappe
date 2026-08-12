@@ -47,8 +47,8 @@ export default class GridRowForm {
 						${__("Editing Row")} #<span class="grid-form-row-index"></span></span>
 					<span class="row-actions">
 						${frappe.ui.button.html({
-							icon: "chevron-down",
-							title: __("Collapse"),
+							icon: "x",
+							title: __("Close"),
 							css_class: "pull-right grid-collapse-row",
 						})}
 						${frappe.ui.button.html({
@@ -78,13 +78,35 @@ export default class GridRowForm {
 			</div>
 			<div class="grid-form-body">
 				<div class="form-area"></div>
-				<div class="grid-footer-toolbar hidden-xs flex justify-between">
-					<div class="grid-shortcuts">
-						<span> ${frappe.utils.icon("keyboard", "md")} </span>
-						<span class="text-medium"> ${__("Shortcuts")}: </span>
-						<kbd>${__("Ctrl + Up")}</kbd> . <kbd>${__("Ctrl + Down")}</kbd> . <kbd>${__("ESC")}</kbd>
-					</div>
+			</div>
+			<div class="grid-footer-toolbar hidden-xs flex justify-between">
+				<div class="grid-shortcuts">
+					<span> ${frappe.utils.icon("keyboard", "md")} </span>
+					<span class="text-medium"> ${__("Shortcuts")}: </span>
+					<kbd>${__("Ctrl + Up")}</kbd> . <kbd>${__("Ctrl + Down")}</kbd> . <kbd>${__("ESC")}</kbd>
 				</div>
+				<span class="row-actions">
+					${frappe.ui.button.html({
+						icon: "chevrons-down",
+						title: __("Last Row"),
+						css_class: "pull-right grid-last-row",
+					})}
+					${frappe.ui.button.html({
+						icon: "chevron-down",
+						title: __("Next Row"),
+						css_class: "pull-right grid-next-row",
+					})}
+					${frappe.ui.button.html({
+						icon: "chevron-up",
+						title: __("Previous Row"),
+						css_class: "pull-right grid-prev-row",
+					})}
+					${frappe.ui.button.html({
+						icon: "chevrons-up",
+						title: __("First Row"),
+						css_class: "pull-right grid-first-row",
+					})}
+				</span>
 			</div>`;
 
 			$(template).appendTo(this.wrapper);
@@ -95,6 +117,10 @@ export default class GridRowForm {
 	}
 	set_form_events() {
 		var me = this;
+		this.wrapper.find(".grid-collapse-row").on("click", function () {
+			me.row.toggle_view();
+			return false;
+		});
 		this.wrapper.find(".grid-delete-row").on("click", function () {
 			me.row.remove();
 			return false;
@@ -115,8 +141,51 @@ export default class GridRowForm {
 			me.row.move();
 			return false;
 		});
-		this.wrapper.find(".grid-form-heading, .grid-footer-toolbar").on("click", function () {
-			me.row.toggle_view();
+		this.wrapper.find(".grid-first-row").on("click", function () {
+			if (me.row.doc.idx == 1) {
+				frappe.show_alert(__("This is the first row"));
+				return false;
+			}
+
+			me.row.toggle_view(false, function () {
+				me.row.open_row_at_index(0);
+			});
+			return false;
+		});
+		this.wrapper.find(".grid-prev-row").on("click", function () {
+			if (me.row.doc.idx == 1) {
+				frappe.show_alert(__("This is the first row"));
+				return false;
+			}
+
+			if (me.row?.has_prev()) {
+				me.row.toggle_view(false, function () {
+					me.row.open_prev();
+				});
+			}
+			return false;
+		});
+		this.wrapper.find(".grid-next-row").on("click", function () {
+			if (me.row.doc.idx == me.row.grid.grid_rows.length) {
+				frappe.show_alert(__("This is the last row"));
+				return false;
+			}
+
+			if (me.row?.has_next()) {
+				me.row.toggle_view(false, function () {
+					me.row.open_next();
+				});
+			}
+			return false;
+		});
+		this.wrapper.find(".grid-last-row").on("click", function () {
+			if (me.row.doc.idx == me.row.grid.grid_rows.length) {
+				frappe.show_alert(__("This is the last row"));
+				return false;
+			}
+			me.row.toggle_view(false, function () {
+				me.row.open_row_at_index(me.row.grid.grid_rows.length - 1);
+			});
 			return false;
 		});
 	}
