@@ -47,6 +47,20 @@ context("Sidebar", () => {
 			});
 	});
 
+	it("Toggles the Desk sidebar from above the user profile", () => {
+		cy.visit("/desk");
+		cy.window()
+			.its("frappe.app.sidebar")
+			.then((sidebar) => sidebar.open());
+
+		cy.get(".body-sidebar-container").should("have.class", "expanded");
+		cy.findByRole("button", { name: "Collapse Sidebar" }).click();
+		cy.get(".body-sidebar-container").should("not.have.class", "expanded");
+
+		cy.findByRole("button", { name: "Expand Sidebar" }).click();
+		cy.get(".body-sidebar-container").should("have.class", "expanded");
+	});
+
 	it("Verify attachment visibility config", () => {
 		cy.call("frappe.tests.ui_test_helpers.create_todo", {
 			description: "Sidebar Attachment ToDo",

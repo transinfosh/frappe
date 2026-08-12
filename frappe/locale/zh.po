@@ -4985,6 +4985,11 @@ msgstr "代码质询方法"
 msgid "Collapse"
 msgstr "收起"
 
+#: frappe/public/js/frappe/ui/sidebar/sidebar.html
+#: frappe/public/js/frappe/ui/sidebar/sidebar.js
+msgid "Collapse Sidebar"
+msgstr "收起边栏"
+
 #: frappe/public/js/frappe/form/controls/code.js:185
 msgctxt "Shrink code field."
 msgid "Collapse"
@@ -9686,6 +9691,10 @@ msgstr "现有角色"
 #: frappe/public/js/frappe/widgets/base_widget.js:159
 msgid "Expand"
 msgstr "展开"
+
+#: frappe/public/js/frappe/ui/sidebar/sidebar.js
+msgid "Expand Sidebar"
+msgstr "展开边栏"
 
 #: frappe/public/js/frappe/form/controls/code.js:186
 msgctxt "Enlarge code field."

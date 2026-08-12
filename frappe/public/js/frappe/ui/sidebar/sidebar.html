@@ -47,7 +47,16 @@
 						 <span> {%= __("Getting Started") %} </span>
 					</a>
 				</p>
-				<div class="nav-item dropdown dropdown-navbar-user dropdown-mobile mt-3">
+				<button
+					class="btn-reset collapse-sidebar-link"
+					type="button"
+					aria-label="{%= __("Collapse Sidebar") %}"
+					title="{%= __("Collapse Sidebar") %}"
+				>
+					{%= frappe.utils.icon("panel-right-open", "sm", "", "", "text-ink-gray-7 current-color", true) %}
+					<span>{%= __("Collapse Sidebar") %}</span>
+				</button>
+				<div class="nav-item dropdown dropdown-navbar-user dropdown-mobile">
 					<a
 						class="align-center btn-reset flex nav-link sidebar-user-button"
 						style="width: 100%; min-height: 40px;"

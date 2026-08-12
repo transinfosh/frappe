@@ -270,7 +270,7 @@ frappe.ui.sidebar_item.TypeSectionBreak = class SectionBreakSidebarItem extends 
 		const me = this;
 		let current_sidebar_state = this.section_breaks_state[this.workspace_title];
 		for (const [element_name, collapsed] of Object.entries(current_sidebar_state)) {
-			if ($(this.wrapper).attr("title") == element_name) {
+			if (this.item.label == element_name) {
 				me.collapsed = collapsed;
 				me.toggle();
 			}
@@ -297,8 +297,7 @@ frappe.ui.sidebar_item.TypeSectionBreak = class SectionBreakSidebarItem extends 
 			this.section_breaks_state[this.workspace_title] = {};
 		}
 
-		const title = this.wrapper.attr("title");
-		this.section_breaks_state[this.workspace_title][title] = this.collapsed;
+		this.section_breaks_state[this.workspace_title][this.item.label] = this.collapsed;
 
 		localStorage.setItem("section-breaks-state", JSON.stringify(this.section_breaks_state));
 	}

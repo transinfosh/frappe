@@ -442,7 +442,6 @@ frappe.ui.Sidebar = class Sidebar {
 	}
 	make_sidebar() {
 		this.empty();
-		this.wrapper.find(".collapse-sidebar-link").removeClass("hidden");
 		if (this.editor.edit_mode) {
 			this.create_sidebar(this.editor.new_sidebar_items);
 		} else {
@@ -468,7 +467,6 @@ frappe.ui.Sidebar = class Sidebar {
 				"<div class='flex' style='padding: 30px'> No Sidebar Items </div>"
 			);
 			this.wrapper.find(".sidebar-items").append(no_items_message);
-			this.wrapper.find(".collapse-sidebar-link").addClass("hidden");
 		}
 		if (this.edit_mode) {
 			$(".edit-menu").removeClass("hidden");
@@ -587,10 +585,11 @@ frappe.ui.Sidebar = class Sidebar {
 		}
 
 		localStorage.setItem("sidebar-expanded", this.sidebar_expanded);
-		this.wrapper
-			.find(".body-sidebar .collapse-sidebar-link")
-			.find("use")
-			.attr("href", `#icon-panel-${direction}-open`);
+		const toggle_label = this.sidebar_expanded ? __("Collapse Sidebar") : __("Expand Sidebar");
+		const $toggle = this.wrapper.find(".body-sidebar .collapse-sidebar-link");
+		$toggle.attr({ "aria-label": toggle_label, title: toggle_label });
+		$toggle.find("span").text(toggle_label);
+		$toggle.find("use").attr("href", `#icon-panel-${direction}-open`);
 		this.sidebar_header.toggle_width(this.sidebar_expanded);
 		$(document).trigger("sidebar-expand", {
 			sidebar_expand: this.sidebar_expanded,
