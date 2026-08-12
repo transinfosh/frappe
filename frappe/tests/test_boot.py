@@ -2,6 +2,7 @@ import frappe
 from frappe.desk.desk_views import DeskViews
 from frappe.desk.doctype.note.note import _get_unseen_notes, get_unseen_notes, mark_as_seen
 from frappe.desk.doctype.sidebar.test_sidebar import developer_mode
+from frappe.desk.utils import is_item_allowed
 from frappe.tests import IntegrationTestCase
 
 
@@ -47,6 +48,19 @@ class TestBootData(IntegrationTestCase):
 
 			self.assertEqual(DeskViews.get_allowed_reports(cache=True), {})
 			self.assertEqual(build.call_count, 1)
+
+	def test_allowed_page_info_includes_module(self):
+		pages = DeskViews._build_user_pages_or_reports("Page", "Administrator")
+
+		self.assertEqual(pages["permission-manager"]["module"], "Core")
+
+	def test_inaccessible_single_doctype_is_excluded_from_desk_views(self):
+		views = DeskViews()
+		views.can_read = ["System Health Report"]
+		views.restricted_doctypes = ["System Health Report"]
+
+		with self.set_user("Guest"):
+			self.assertFalse(is_item_allowed("System Health Report", "DocType", views))
 
 	def test_disabled_reports_are_not_allowed(self):
 		frappe.set_user("Administrator")

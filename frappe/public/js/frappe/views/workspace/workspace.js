@@ -82,7 +82,7 @@ frappe.views.Workspace = class Workspace {
 
 	setup_sidebar() {
 		if (this._page) {
-			this.sidebar.setup(this._page.name);
+			this.sidebar.set_workspace_sidebar();
 		}
 	}
 
@@ -150,7 +150,7 @@ frappe.views.Workspace = class Workspace {
 			return;
 		}
 
-		this.page.set_title(__(page.name));
+		this.page.set_title(__(page.title || page.name));
 		this.show_page(page);
 	}
 
@@ -278,7 +278,9 @@ frappe.views.Workspace = class Workspace {
 			this._page = current_page;
 			const me = this;
 			// private workspaces are stored as `${title}-${for_user}`; show just the title
-			let header_dropdown = `${__(this._page.title)}`;
+			const page_title = this._page.title || this._page.name;
+			this.page.set_title(__(page_title));
+			let header_dropdown = `${__(page_title)}`;
 			this.page.set_breadcrumbs([{ label: header_dropdown }]);
 			if (!this.add_workspace_controls) {
 				this.workspace_actions_button = this.page.add_action_icon("ellipsis", "", "");
@@ -384,6 +386,7 @@ frappe.views.Workspace = class Workspace {
 
 			localStorage.current_page = current_page.name;
 			localStorage.is_current_page_public = current_page.public ? "true" : "false";
+			this.setup_sidebar();
 		}
 	}
 

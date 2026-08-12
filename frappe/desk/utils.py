@@ -63,7 +63,8 @@ def is_item_allowed(name, item_type, ctx):
 				and name in (ctx.restricted_doctypes or [])
 				and frappe.has_permission(name)
 			)
-		except frappe.DoesNotExistError:
+		except frappe.DoesNotExistError, frappe.PermissionError:
+			# Single and virtual doctypes may reject loading while permissions are evaluated.
 			frappe.clear_last_message()
 			return False
 	if item_type == "page":
