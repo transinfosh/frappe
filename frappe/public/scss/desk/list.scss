@@ -1,9 +1,12 @@
 .layout-main-section-wrapper:not(.disable-scrolling) {
 	.frappe-list {
 		.result-container {
+			overflow: auto;
+			scrollbar-gutter: stable;
 			.result {
 				min-width: 100%;
 				width: auto;
+				overflow: visible;
 				display: table;
 
 				// Spacer rows reserve off-screen height in virtualized lists but should never intercept clicks.
@@ -757,10 +760,11 @@ input.list-header-checkbox {
 .list-view {
 	.frappe-list {
 		.result-container {
-			overflow-x: auto;
+			overflow: auto;
+			scrollbar-gutter: stable;
 
 			.result {
-				overflow-y: hidden;
+				overflow: visible;
 				display: table;
 				width: 100%;
 			}
@@ -865,8 +869,9 @@ input.list-header-checkbox {
 						}
 					}
 
-					.mobile-layout-seperator:not(.mobile-layout-seperator
-							~ .mobile-layout-seperator) {
+					.mobile-layout-seperator:not(
+							.mobile-layout-seperator ~ .mobile-layout-seperator
+						) {
 						padding-left: 27px;
 						margin-right: 6px;
 

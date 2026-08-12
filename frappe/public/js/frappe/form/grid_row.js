@@ -727,7 +727,7 @@ export default class GridRow {
 				: __(df.label, null, df.parent);
 
 			if (this.doc && df.fieldtype === "Select") {
-				txt = __(txt);
+				txt = frappe.utils.get_select_option_label(this.doc[df.fieldname], df);
 			}
 			let column;
 			if (!this.columns[df.fieldname] && !this.show_search) {

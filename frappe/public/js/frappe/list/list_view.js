@@ -346,7 +346,9 @@ frappe.views.ListView = class ListView extends frappe.views.BaseList {
 
 	set_primary_action() {
 		if (this.can_create && !frappe.boot.read_only) {
-			const doctype_name = __(frappe.router.doctype_layout) || __(this.doctype);
+			const doctype_name =
+				__(frappe.router.doctype_layout) ||
+				frappe.model.get_translated_doctype_title(this.meta);
 			const add_button_label = __("Add {0}", [doctype_name], "Primary action in list view");
 			const primary_action = () => {
 				if (this.settings.primary_action) {
@@ -715,20 +717,21 @@ frappe.views.ListView = class ListView extends frappe.views.BaseList {
 	}
 
 	get_no_result_message() {
+		const doctype_title = frappe.model.get_translated_doctype_title(this.meta);
 		let filters = this.filter_area && this.filter_area.get();
 
 		let has_filters_set = filters && filters.length;
 
 		let title = has_filters_set
-			? __("No {0} found", [__(this.doctype)])
-			: __("No {0} created", [__(this.doctype)]);
+			? __("No {0} found", [doctype_title])
+			: __("No {0} created", [doctype_title]);
 
 		let description = has_filters_set
 			? __("Clear the filters to see all records.")
 			: this.meta.description
 			? __(this.meta.description)
 			: this.can_create
-			? __("Create your first {0} to get started.", [__(this.doctype)])
+			? __("Create your first {0} to get started.", [doctype_title])
 			: __("Nothing has been added yet.");
 
 		const actions = [];
@@ -1504,7 +1507,7 @@ frappe.views.ListView = class ListView extends frappe.views.BaseList {
 					</div>`;
 			} else if (df.fieldtype === "Select") {
 				html = frappe.ui.badge.html({
-					label: __(_value),
+					label: frappe.utils.get_select_option_label(_value, df),
 					theme: frappe.utils.guess_colour(_value),
 					css_class: `${filterable} ellipsis`.trim(),
 					attrs: {
@@ -2485,7 +2488,9 @@ frappe.views.ListView = class ListView extends frappe.views.BaseList {
 
 		if (only_docnames) return docnames;
 
-		return this.data.filter((d) => this.checked_docnames.has(d.name));
+		return this.data.filter(
+			(d) => this.checked_docnames.has(d.name) || this.checked_docnames.has(cstr(d.name))
+		);
 	}
 
 	clear_checked_items() {
@@ -2686,7 +2691,7 @@ frappe.views.ListView = class ListView extends frappe.views.BaseList {
 		fields = fields.concat(default_fields_dict);
 
 		group_by_fields.push({
-			label: __(this.doctype),
+			label: frappe.model.get_translated_doctype_title(this.meta),
 			fieldname: "group_by_fields",
 			fieldtype: "MultiCheck",
 			columns: 2,
