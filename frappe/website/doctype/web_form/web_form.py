@@ -16,7 +16,7 @@ from frappe.permissions import check_doctype_permission, get_allowed_docs_for_do
 from frappe.rate_limiter import rate_limit
 from frappe.utils import cint, dict_with_keys, now_datetime, strip_html
 from frappe.utils.caching import redis_cache
-from frappe.utils.data import escape_html
+from frappe.utils.data import escape_html, get_select_options
 from frappe.website.doctype.web_form_request.web_form_request import (
 	get_web_form_request,
 	get_web_form_request_query,
@@ -420,7 +420,8 @@ def get_context(context):
 		for field in self.web_form_fields:
 			messages.extend([field.label, field.description])
 			if field.fieldtype == "Select" and field.options:
-				messages.extend(field.options.split("\n"))
+				options = get_select_options(field.options, field.get("options_has_label", False))
+				messages.extend(options)
 
 		# When at least one field in self.web_form_fields has fieldtype "Table" then add "No data" to messages
 		if any(field.fieldtype == "Table" for field in self.web_form_fields):

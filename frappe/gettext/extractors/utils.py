@@ -2,6 +2,8 @@ import json
 import re
 
 import frappe
+from frappe.utils import cint
+from frappe.utils.data import get_select_option_labels
 
 TRANSLATE_PATTERN = re.compile(
 	r"_\(\s*"  # starts with literal `_(`, ignore following whitespace/newlines
@@ -137,8 +139,12 @@ def extract_messages_from_docfield(doctype: str, field: dict, text: str):
 	if message := field.get("options"):
 		lineno = get_line_number(text, "options", message)
 		if fieldtype == "Select" and fieldname not in EXCLUDE_SELECT_OPTIONS:
-			select_options = [option for option in message.split("\n") if option and not option.isdigit()]
-
+			options_has_label = cint(field.get("options_has_label"))
+			select_options = [
+				option
+				for option in get_select_option_labels(message, options_has_label, True)
+				if option and not option.isdigit()
+			]
 			yield from (
 				(
 					lineno,

@@ -61,7 +61,7 @@ from frappe.utils import (
 	sanitize_html,
 	strip_html,
 )
-from frappe.utils.data import get_absolute_url, get_datetime, get_timedelta, getdate
+from frappe.utils.data import get_absolute_url, get_datetime, get_select_options, get_timedelta, getdate
 from frappe.utils.defaults import get_not_null_defaults
 from frappe.utils.html_utils import has_html_tags, unescape_html
 
@@ -2401,7 +2401,9 @@ class Document(_DocumentBase):
 		if key in self.__dict__:
 			del self.__dict__[key]
 
-	def append(self, key: str, value: D | dict | None = None, position: int = -1) -> D:
+	def append(
+		self, key: str, value: D | dict | None = None, position: int = -1, set_defaults: bool = False
+	) -> D:
 		"""Append an item to a child table.
 
 		Example:
@@ -2418,6 +2420,8 @@ class Document(_DocumentBase):
 			self.__dict__[key] = table = []
 
 		d = self._init_child(value, key)
+		if set_defaults:
+			d._set_defaults()
 
 		if position == -1:
 			table.append(d)
@@ -2582,7 +2586,7 @@ class Document(_DocumentBase):
 						value = self._evaluate_virtual_field_options(options)
 
 				fieldtype = df.fieldtype
-				if isinstance(value, list) and fieldtype not in table_fields:
+				if isinstance(value, list) and fieldtype != "JSON" and fieldtype not in table_fields:
 					frappe.throw(_("Value for {0} cannot be a list").format(_(df.label, context=df.parent)))
 
 				if fieldtype == "Check":
@@ -2591,7 +2595,7 @@ class Document(_DocumentBase):
 				elif fieldtype == "Int" and not isinstance(value, int):
 					value = cint(value)
 
-				elif fieldtype == "JSON" and isinstance(value, dict):
+				elif fieldtype == "JSON" and isinstance(value, dict | list):
 					value = json.dumps(value, separators=(",", ":"))
 
 				elif fieldtype in float_like_fields and not isinstance(value, float):
@@ -3143,7 +3147,7 @@ class Document(_DocumentBase):
 			if df.fieldname == "naming_series" or not self.get(df.fieldname) or not df.options:
 				continue
 
-			options = (df.options or "").split("\n")
+			options = get_select_options(df.options, df.options_has_label, False)
 
 			# if only empty options
 			if not filter(None, options):
