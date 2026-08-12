@@ -73,6 +73,29 @@ import frappe.website.website_generator  # web page doctypes
 Request.max_form_memory_size = None
 
 
+class _RequestClosingIterator(ClosingIterator):
+	def close(self):
+		if getattr(self, "_closed", False):
+			return
+		self._closed = True
+		try:
+			super().close()
+		except BaseException:
+			_destroy_request_context(preserve_exception=True)
+			raise
+		else:
+			frappe.destroy()
+
+
+def _destroy_request_context(*, preserve_exception: bool = False) -> None:
+	try:
+		frappe.destroy()
+	except BaseException:
+		if not preserve_exception:
+			raise
+		logging.getLogger(__name__).exception("Failed to destroy request context")
+
+
 def after_response_wrapper(app):
 	"""Wrap a WSGI application to call after_response hooks after we have responded.
 
@@ -80,15 +103,23 @@ def after_response_wrapper(app):
 
 	@functools.wraps(app)
 	def application(environ, start_response):
-		return ClosingIterator(
-			app(environ, start_response),
-			(
-				frappe.rate_limiter.update,
-				frappe.recorder.dump,
-				frappe.request.after_response.run,
-				frappe.destroy,
-			),
-		)
+		try:
+			response = app(environ, start_response)
+		except BaseException:
+			_destroy_request_context(preserve_exception=True)
+			raise
+		try:
+			return _RequestClosingIterator(
+				response,
+				(
+					frappe.rate_limiter.update,
+					frappe.recorder.dump,
+					frappe.request.after_response.run,
+				),
+			)
+		except BaseException:
+			_destroy_request_context(preserve_exception=True)
+			raise
 
 	return application
 
