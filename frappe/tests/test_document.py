@@ -56,6 +56,39 @@ class TestToDoExtension(Document):
 
 
 class TestDocument(IntegrationTestCase):
+	def test_loading_serialized_json_preserves_parent_and_child_values(self):
+		import json
+
+		child = new_doctype(istable=1, fields=[{"fieldname": "payload", "fieldtype": "JSON"}]).insert()
+		parent = new_doctype(
+			fields=[
+				{"fieldname": "payload", "fieldtype": "JSON"},
+				{"fieldname": "rows", "fieldtype": "Table", "options": child.name},
+			]
+		).insert()
+		doc = frappe.get_doc(
+			{"doctype": parent.name, "payload": {"hello": "world"}, "rows": [{"payload": [1, 2]}]}
+		).insert()
+		original_sql = frappe.db.sql
+
+		def serialized_json_sql(*args, **kwargs):
+			rows = original_sql(*args, **kwargs)
+			if kwargs.get("as_dict"):
+				for row in rows:
+					if isinstance(row.get("payload"), (dict, list)):
+						row["payload"] = json.dumps(row["payload"])
+			return rows
+
+		# MariaDB returns JSON strings; PostgreSQL returns dict/list values.
+		with patch.object(frappe.db, "sql", side_effect=serialized_json_sql):
+			loaded = frappe.get_doc(parent.name, doc.name)
+		self.assertEqual(json.loads(loaded.payload), {"hello": "world"})
+		self.assertEqual(json.loads(loaded.rows[0].payload), [1, 2])
+		loaded.save()
+		loaded.reload()
+		self.assertEqual(json.loads(loaded.payload), {"hello": "world"})
+		self.assertEqual(json.loads(loaded.rows[0].payload), [1, 2])
+
 	def test_get_return_empty_list_for_table_field_if_none(self):
 		d = frappe.get_doc({"doctype": "User"})
 		self.assertEqual(d.get("roles"), [])
@@ -105,6 +138,49 @@ class TestDocument(IntegrationTestCase):
 		doc.append("child_table", {})
 		doc.save()
 		self.assertEqual(doc.child_table[-1].some_fieldname, default)
+
+	def test_child_table_title_field(self):
+		template_child = new_doctype(
+			istable=1,
+			title_field="title",
+			fields=[
+				{"fieldname": "source", "fieldtype": "Data", "label": "Source"},
+				{"fieldname": "title", "fieldtype": "Data", "label": "Title", "options": "Title: {source}"},
+			],
+		).insert()
+		autoincrement_child = new_doctype(
+			istable=1,
+			title_field="title",
+			autoname="autoincrement",
+			fields=[{"fieldname": "title", "fieldtype": "Data", "label": "Title"}],
+		).insert()
+		parent = new_doctype(
+			fields=[
+				{
+					"fieldname": "template_rows",
+					"fieldtype": "Table",
+					"label": "Template Rows",
+					"options": template_child.name,
+				},
+				{
+					"fieldname": "autoincrement_rows",
+					"fieldtype": "Table",
+					"label": "Autoincrement Rows",
+					"options": autoincrement_child.name,
+				},
+			],
+		).insert()
+
+		doc = frappe.get_doc(
+			{
+				"doctype": parent.name,
+				"template_rows": [{"source": "Child Value"}],
+				"autoincrement_rows": [{}],
+			}
+		).insert()
+
+		self.assertEqual(doc.template_rows[0].title, "Title: Child Value")
+		self.assertEqual(doc.autoincrement_rows[0].title, f"{doc.name}-1")
 
 	def test_insert_with_child(self):
 		d = frappe.get_doc(
@@ -1072,6 +1148,14 @@ class TestLazyDocument(IntegrationTestCase):
 
 		for method in ("append", "extend", "db_update_all", "get"):
 			compare_signatures(original_class, lazy_class, method)
+
+	def test_append_applies_requested_defaults(self):
+		from frappe.model.document import Document
+
+		guest = frappe.get_lazy_doc("User", "Guest")
+		with patch.object(Document, "_set_defaults", autospec=True) as set_defaults:
+			row = guest.append("roles", {}, set_defaults=True)
+		set_defaults.assert_called_once_with(row)
 
 	def test_append_extend_update(self):
 		guest = frappe.get_lazy_doc("User", "Guest")
