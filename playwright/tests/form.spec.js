@@ -34,6 +34,7 @@ test.describe("Form", () => {
 		);
 		await page.locator(".primary-action:visible").click();
 		expect((await saved).status()).toBe(200);
+		await expect(page).toHaveTitle("this is a test todo · ToDo");
 
 		await desk.go_to_list("ToDo");
 		await desk.clear_filters();

@@ -148,7 +148,7 @@ class Meta(Document):
 		else:
 			super().__init__("DocType", doctype)
 
-		self.process()
+		self.execute_process()
 
 	def load_from_db(self):
 		try:
@@ -159,7 +159,7 @@ class Meta(Document):
 			else:
 				raise
 
-	def process(self):
+	def execute_process(self):
 		# don't process for special doctypes
 		# prevents circular dependency
 		if self.name in self.special_doctypes:
@@ -522,6 +522,13 @@ class Meta(Document):
 		return self.get("fields", {"fieldtype": ["in", table_fields]})
 
 	@cached_property
+	def _json_fields(self):
+		if self.name == "DocType":
+			return DOCTYPE_TABLE_FIELDS
+
+		return self.get("fields", {"fieldtype": ["=", "JSON"]})
+
+	@cached_property
 	def _non_computed_table_fields(self):
 		if self.name == "DocType":
 			return self._table_fields
@@ -531,6 +538,10 @@ class Meta(Document):
 	@cached_property
 	def _table_doctypes(self):
 		return {field.fieldname: field.options for field in self._table_fields}
+
+	@cached_property
+	def _json_fieldnames(self):
+		return [field.fieldname for field in self._json_fields]
 
 	@cached_property
 	def _non_computed_table_doctypes(self):
@@ -699,6 +710,9 @@ class Meta(Document):
 		permitted_fieldnames = []
 
 		if self.istable and not parenttype:
+			title_field = self.get_title_field()
+			if title_field and title_field != "name":
+				permitted_fieldnames.append(title_field)
 			return permitted_fieldnames
 
 		if not permission_type:
