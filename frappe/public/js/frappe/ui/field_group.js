@@ -240,13 +240,34 @@ frappe.ui.FieldGroup = class FieldGroup extends frappe.ui.form.Layout {
 		}
 	}
 
-	set_df_property(fieldname, prop, value) {
+	set_df_property(fieldname, prop, value, docname, table_field, table_row_name = null) {
 		if (!fieldname) {
 			return;
 		}
-		const field = this.get_field(fieldname);
-		field.df[prop] = value;
-		field.refresh();
+
+		if (!docname || !table_field) {
+			const field = this.get_field(fieldname);
+			field.df[prop] = value;
+			field.refresh();
+			return;
+		}
+
+		const grid = this.fields_dict[fieldname].grid;
+		let df = grid.fields_map[table_field];
+
+		if (df && df[prop] != value) {
+			df[prop] = value;
+
+			if (table_field && table_row_name) {
+				this.fields_dict[fieldname].grid.grid_rows_by_docname[
+					table_row_name
+				].refresh_field(table_field);
+			}
+		}
+	}
+
+	set_child_df_property(fieldname, property, value, field_of_table, table_row_name = null) {
+		this.set_df_property(field_of_table, property, value, "-", fieldname, table_row_name);
 	}
 
 	set_query(fieldname, opt1, opt2) {

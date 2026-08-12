@@ -363,10 +363,10 @@ frappe.ui.Dialog = class Dialog extends frappe.ui.FieldGroup {
 		$("body").css("overflow", bool ? "hidden" : "auto");
 	}
 
-	add_custom_action(label, action, css_class = null) {
+	add_custom_action(label, action, css_class = null, title = null) {
 		this.footer.removeClass("hide");
 		let action_button = $(`
-			<button class="btn btn-secondary btn-sm ${css_class || ""}">
+			<button ${title ? `title="${title}"` : ""} class="btn btn-secondary btn-sm ${css_class || ""}">
 				${label}
 			</button>
 		`);

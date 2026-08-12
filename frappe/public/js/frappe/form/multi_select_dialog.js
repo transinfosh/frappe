@@ -15,10 +15,17 @@ frappe.ui.form.MultiSelectDialog = class MultiSelectDialog {
 		this.child_page_length = 20;
 		this.fields = this.get_fields();
 
+		let meta = frappe.get_meta(this.doctype);
+		if (meta.istable) {
+			this.show_secondary_action = false;
+		} else if (this.show_secondary_action === undefined) {
+			this.show_secondary_action = true;
+		}
+
 		this.make();
 
-		this.selected_fields = new Set();
-		this.selected_items = {};
+		this.selected_fields = new Set(this.selected_fields || []);
+		this.selected_items = this.selected_items || {};
 	}
 
 	get_fields() {
@@ -78,14 +85,19 @@ frappe.ui.form.MultiSelectDialog = class MultiSelectDialog {
 	}
 
 	make() {
-		let title = __("Select {0}", [this.for_select ? __("value") : __(this.doctype)]);
+		let meta = frappe.get_meta(this.doctype);
+		let title = __("Select {0}", [
+			this.for_select ? __("value") : __(meta?.name || this.doctype),
+		]);
 
 		this.dialog = new frappe.ui.Dialog({
 			title: title,
 			fields: this.fields,
 			size: this.size,
 			primary_action_label: this.primary_action_label || __("Get Items"),
-			secondary_action_label: __("Make {0}", [__(this.doctype)]),
+			secondary_action_label: this.show_secondary_action
+				? __("Make {0}", [__(this.doctype)])
+				: null,
 			primary_action: () => {
 				let filters_data = this.get_custom_filters();
 				const data_values = cur_dialog.get_values(); // to pass values of data fields
@@ -101,7 +113,9 @@ frappe.ui.form.MultiSelectDialog = class MultiSelectDialog {
 					filtered_children,
 				});
 			},
-			secondary_action: this.make_new_document.bind(this),
+			secondary_action: this.show_secondary_action
+				? this.make_new_document.bind(this)
+				: null,
 		});
 
 		if (this.add_filters_group) {
@@ -251,7 +265,19 @@ frappe.ui.form.MultiSelectDialog = class MultiSelectDialog {
 			});
 		} else {
 			Object.keys(this.setters).forEach((setter, index) => {
-				let df_prop = frappe.meta.docfield_map[this.doctype][setter];
+				let df_prop = null;
+				let setter_value = this.setters[setter];
+				let setter_is_custom = false;
+				//手动指定Setter字段的属性，不需要从物料中取
+				if (setter_value instanceof Object) {
+					df_prop = setter_value;
+					setter_is_custom = true;
+				} else {
+					df_prop = frappe.meta.docfield_map[this.doctype][setter];
+				}
+				if (df_prop.fieldtype === "Small Text") {
+					df_prop.fieldtype = "Data";
+				}
 
 				// Index + 1 to start filling from index 1
 				// Since Search is a standrd field already pushed
@@ -262,7 +288,7 @@ frappe.ui.form.MultiSelectDialog = class MultiSelectDialog {
 					options: df_prop.options,
 					read_only:
 						(this?.read_only_setters && this.read_only_setters.includes(setter)) || 0,
-					default: this.setters[setter],
+					default: setter_is_custom ? df_prop.default : this.setters[setter],
 				});
 			});
 		}
@@ -479,16 +505,42 @@ frappe.ui.form.MultiSelectDialog = class MultiSelectDialog {
 
 		let contents = ``;
 		this.get_datatable_columns().forEach(function (column) {
-			let column_label = frappe.utils.escape_html(__(frappe.model.unscrub(column)));
-			let value = frappe.utils.escape_html(__(result[column] || ""));
-			let id_href = frappe.utils.escape_html(
-				"/desk/" + frappe.router.slug(me.doctype) + "/" + (result[column] || "")
+			let title = "",
+				fieldname = "",
+				fieldtype = "Data",
+				field_options = null,
+				value = "",
+				id_href = "";
+			if (column instanceof Object) {
+				fieldname = column.fieldname;
+				title = __(column.label || frappe.model.unscrub(fieldname));
+				fieldtype = column.fieldtype || "Data";
+				field_options = column.options;
+			} else {
+				fieldname = column;
+				if (fieldname === "name") {
+					title = __("ID");
+				} else {
+					let df_prop = frappe.meta.docfield_map[me.doctype][fieldname];
+					title = __(df_prop?.label || frappe.model.unscrub(column));
+				}
+			}
+
+			let raw_value = result[fieldname];
+			if (raw_value === null || raw_value === undefined) {
+				raw_value = "";
+			}
+			title = frappe.utils.escape_html(title);
+			value = frappe.utils.escape_html(__(raw_value));
+			id_href = frappe.utils.escape_html(
+				"/desk/" + frappe.router.slug(field_options || me.doctype) + "/" + raw_value
 			);
+
 			contents += `<div class="list-item__content ellipsis">
 				${
 					head
-						? `<span class="ellipsis text-muted" title="${column_label}">${column_label}</span>`
-						: column !== "name"
+						? `<span class="ellipsis text-muted" title="${title}">${title}</span>`
+						: fieldname !== "name" && fieldtype !== "Link"
 						? `<span class="ellipsis result-row" title="${value}">${value}</span>`
 						: `<a href="${id_href}" class="list-id ellipsis" title="${value}">
 							${value}</a>`
@@ -593,6 +645,22 @@ frappe.ui.form.MultiSelectDialog = class MultiSelectDialog {
 						filters_list.push([me.doctype, setter, "=", value]);
 					}
 				}
+			});
+		}
+
+		if ($.isArray(this.columns)) {
+			filter_fields = [];
+			for (let df of this.columns) {
+				if (typeof df === "string") {
+					filter_fields.push(df);
+				} else if (df.fieldname) {
+					filter_fields.push(df.fieldname);
+				}
+			}
+		} else if (this.columns) {
+			filter_fields = [];
+			Object.keys(this.columns).forEach(function (setter) {
+				filter_fields.push(setter);
 			});
 		}
 
