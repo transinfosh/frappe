@@ -272,13 +272,23 @@ class Document(BaseDocument):
 				for_update = ""
 				if self.flags.for_update and frappe.db.db_type != "sqlite":
 					for_update = "FOR UPDATE"
+
+				# If autoname is autoincrement, the column type of name is bigint, cannot use default name with "new-doctype-xxx"
+				doc_name = self.name
+				if (
+					self.meta.autoname == "autoincrement"
+					and isinstance(self.name, str)
+					and doc_name.startswith("new-")
+				):
+					doc_name = -1
+
 				# Fast path - use raw SQL to avoid QB/ORM overheads.
 				d = frappe.db.sql(
 					"SELECT * FROM {table_name} WHERE `name` = %s {for_update}".format(
 						table_name=get_table_name(self.doctype, wrap_in_backticks=True),
 						for_update=for_update,
 					),
-					(self.name),
+					(doc_name),
 					as_dict=True,
 				)
 				d = d[0] if d else d
@@ -299,6 +309,15 @@ class Document(BaseDocument):
 
 			super().__init__(d)
 		self.flags.pop("ignore_children", None)
+
+		# serialize to json if field is json, exclude DocType to avoid circular reference issues
+		if self.doctype != "DocType":
+			for f_name in self.meta._json_fieldnames:
+				val = self.get(f_name)
+				if val is not None and isinstance(val, (dict, list)):
+					self.set(f_name, json.dumps(val, separators=(",", ":")))
+				else:
+					self.set(f_name, None)
 
 		self.load_children_from_db()
 
@@ -359,6 +378,24 @@ class Document(BaseDocument):
 
 			if children is None:
 				children = []
+
+			# serialize to json if field is json
+			if children:
+				if child_doctype == "DocField":
+					# DocField cannot use frappe.get_meta as it creates circular reference
+					json_fieldnames = ["link_filters"]
+				else:
+					child_doctype_meta = frappe.get_meta(child_doctype)
+					json_fieldnames = child_doctype_meta._json_fieldnames
+
+				if json_fieldnames:
+					for child in children:
+						for f_name in json_fieldnames:
+							val = child.get(f_name)
+							if val is not None and isinstance(val, (dict, list)):
+								child[f_name] = json.dumps(val, separators=(",", ":"))
+							else:
+								child[f_name] = None
 
 			self.set(fieldname, children)
 
@@ -474,6 +511,7 @@ class Document(BaseDocument):
 		self.set_docstatus()
 		self.check_permission("create")
 		self.check_if_latest()
+		self.run_method("before_validate_links")
 		self._validate_links()
 		self.run_method("before_insert")
 		self.set_new_name(set_name=set_name, set_child_names=set_child_names)
@@ -484,6 +522,7 @@ class Document(BaseDocument):
 		self.run_before_save_methods()
 		self._validate()
 		self.set_docstatus()
+		self.update_is_group_if_is_tree()
 		self.flags.in_insert = False
 
 		# run validate, on update etc.
@@ -500,6 +539,7 @@ class Document(BaseDocument):
 				d.db_insert()
 
 		self.reset_computed_child_tables()
+		self.update_parent_is_group_if_is_tree()
 		self.run_method("after_insert")
 		self.flags.in_insert = True
 
@@ -588,6 +628,7 @@ class Document(BaseDocument):
 		self.set_name_in_children()
 
 		self.validate_higher_perm_levels()
+		self.run_method("before_validate_links")
 		self._validate_links()
 		self.run_before_save_methods()
 
@@ -607,6 +648,7 @@ class Document(BaseDocument):
 
 		self.update_children()
 		self.reset_computed_child_tables()
+		self.update_parent_is_group_if_is_tree()
 		self.run_post_save_methods()
 
 		# clear unsaved flag
@@ -745,6 +787,8 @@ class Document(BaseDocument):
 			set_new_name(self)
 
 		if set_child_names:
+			self.set_parent_in_children()
+
 			# set name for children
 			for d in self.get_all_children():
 				set_new_name(d)
@@ -758,8 +802,8 @@ class Document(BaseDocument):
 	def set_title_field(self):
 		"""Set title field based on template"""
 
-		def get_values():
-			values = self.as_dict()
+		def get_values(doc=self):
+			values = doc.as_dict()
 			# format values
 			for key, value in values.items():
 				if value is None:
@@ -774,6 +818,21 @@ class Document(BaseDocument):
 			elif self.is_new() and not self.get(df.fieldname) and df.default:
 				# set default title for new transactions (if default)
 				self.set(df.fieldname, df.default.format(**get_values()))
+
+		# 设置子表的title字段
+		for table_field in self.meta.get_table_fields():
+			table_field_meta = frappe.get_meta(table_field.options)
+			if table_field_meta.title_field == "title":
+				df = table_field_meta.get_field(table_field_meta.title_field)
+				all_rows = self.get(table_field.fieldname)
+				for row in all_rows:
+					if df.options:
+						row.set(df.fieldname, df.options.format(**get_values(row)))
+					elif row.is_new() and not row.get(df.fieldname) and df.default:
+						# set default title for new transactions (if default)
+						row.set(df.fieldname, df.default.format(**get_values(row)))
+					elif table_field_meta.autoname == "autoincrement":
+						row.set(df.fieldname, f"{row.parent}-{row.idx}")
 
 	def update_single(self, d):
 		"""Updates values for Single type Document in `tabSingles`."""
@@ -791,6 +850,28 @@ class Document(BaseDocument):
 
 		if self.doctype in frappe.db.value_cache:
 			frappe.db.value_cache.pop(self.doctype, None)
+
+	def update_is_group_if_is_tree(self):
+		if not self.meta.get("is_tree"):
+			return
+
+		nsm_parent_field = self.meta.nsm_parent_field or "parent"
+		child_docs = frappe.get_all(
+			self.meta.name, fields=["name"], filters={nsm_parent_field: self.name}, limit_page_length=1
+		)
+		self.is_group = len(child_docs) > 0
+
+	def update_parent_is_group_if_is_tree(self):
+		if not self.meta.get("is_tree"):
+			return
+
+		nsm_parent_field = self.meta.nsm_parent_field or "parent"
+		parent_val = self.get(nsm_parent_field)
+		if parent_val:
+			parent_doc: Document = frappe.get_doc(self.meta.name, parent_val)
+			if not parent_doc.is_group:
+				parent_doc.is_group = True
+				parent_doc.save()
 
 	def set_user_and_timestamp(self):
 		self._original_modified = self.modified

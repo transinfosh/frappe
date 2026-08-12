@@ -80,6 +80,49 @@ class TestDocument(IntegrationTestCase):
 		doc.save()
 		self.assertEqual(doc.child_table[-1].some_fieldname, default)
 
+	def test_child_table_title_field(self):
+		template_child = new_doctype(
+			istable=1,
+			title_field="title",
+			fields=[
+				{"fieldname": "source", "fieldtype": "Data", "label": "Source"},
+				{"fieldname": "title", "fieldtype": "Data", "label": "Title", "options": "Title: {source}"},
+			],
+		).insert()
+		autoincrement_child = new_doctype(
+			istable=1,
+			title_field="title",
+			autoname="autoincrement",
+			fields=[{"fieldname": "title", "fieldtype": "Data", "label": "Title"}],
+		).insert()
+		parent = new_doctype(
+			fields=[
+				{
+					"fieldname": "template_rows",
+					"fieldtype": "Table",
+					"label": "Template Rows",
+					"options": template_child.name,
+				},
+				{
+					"fieldname": "autoincrement_rows",
+					"fieldtype": "Table",
+					"label": "Autoincrement Rows",
+					"options": autoincrement_child.name,
+				},
+			],
+		).insert()
+
+		doc = frappe.get_doc(
+			{
+				"doctype": parent.name,
+				"template_rows": [{"source": "Child Value"}],
+				"autoincrement_rows": [{}],
+			}
+		).insert()
+
+		self.assertEqual(doc.template_rows[0].title, "Title: Child Value")
+		self.assertEqual(doc.autoincrement_rows[0].title, f"{doc.name}-1")
+
 	def test_insert_with_child(self):
 		d = frappe.get_doc(
 			{
