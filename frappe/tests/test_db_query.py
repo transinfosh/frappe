@@ -57,6 +57,27 @@ class TestDBQuery(IntegrationTestCase):
 	def test_basic(self):
 		self.assertTrue({"name": "DocType"} in DatabaseQuery("DocType").execute(limit_page_length=None))
 
+	def test_child_link_title_permission_exception_is_narrow(self):
+		db_query = DatabaseQuery("DocType")
+		meta = MagicMock()
+		meta.istable = 1
+		meta.get.side_effect = lambda key: {
+			"title_field": "title",
+			"show_title_field_in_link": 1,
+		}.get(key)
+		meta.get_field.return_value = frappe._dict(permlevel=0)
+
+		with patch.object(db_query, "get_meta", return_value=meta):
+			self.assertTrue(db_query._is_child_link_title_field("Test Child", "title"))
+			self.assertFalse(db_query._is_child_link_title_field("Test Child", "private_value"))
+
+			meta.get_field.return_value = frappe._dict(permlevel=1)
+			self.assertFalse(db_query._is_child_link_title_field("Test Child", "title"))
+
+			meta.get_field.return_value = frappe._dict(permlevel=0)
+			meta.istable = 0
+			self.assertFalse(db_query._is_child_link_title_field("Regular DocType", "title"))
+
 	def test_extract_tables(self):
 		db_query = DatabaseQuery("DocType")
 		add_custom_field("DocType", "test_tab_field", "Data")

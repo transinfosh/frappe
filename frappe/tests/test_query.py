@@ -1442,6 +1442,146 @@ class TestQuery(IntegrationTestCase):
 		test_user_doc.remove_roles(test_role)
 		frappe.delete_doc("Role", test_role, force=True)
 
+	def test_child_link_title_field_uses_source_link_permission(self):
+		"""A readable source Link may expose only a child row's public title field."""
+		child_dt_name = "Test Child Link Title"
+		parent_dt_name = "Test Child Link Parent"
+		target_dt_name = "Test Regular Link Title"
+		source_dt_name = "Test Child Link Source"
+		test_role = "Child Link Title Test Role"
+		test_user = "test2@example.com"
+
+		frappe.set_user("Administrator")
+		for doctype in (source_dt_name, parent_dt_name, child_dt_name, target_dt_name):
+			frappe.delete_doc("DocType", doctype, ignore_missing=True, force=True)
+		frappe.delete_doc("Role", test_role, ignore_missing=True, force=True)
+
+		test_user_doc = frappe.get_doc("User", test_user)
+		test_user_doc.remove_roles(test_role)
+
+		child_dt = new_doctype(
+			child_dt_name,
+			istable=1,
+			title_field="title",
+			show_title_field_in_link=1,
+			fields=[
+				{"fieldname": "title", "fieldtype": "Data", "label": "Title"},
+				{"fieldname": "private_value", "fieldtype": "Data", "label": "Private Value"},
+			],
+		).insert()
+		parent_dt = new_doctype(
+			parent_dt_name,
+			fields=[
+				{
+					"fieldname": "items",
+					"fieldtype": "Table",
+					"options": child_dt_name,
+					"label": "Items",
+				}
+			],
+		).insert()
+		target_dt = new_doctype(
+			target_dt_name,
+			title_field="title",
+			show_title_field_in_link=1,
+			fields=[{"fieldname": "title", "fieldtype": "Data", "label": "Title"}],
+		).insert()
+		source_dt = new_doctype(
+			source_dt_name,
+			fields=[
+				{
+					"fieldname": "child_link",
+					"fieldtype": "Link",
+					"options": child_dt_name,
+					"label": "Child Link",
+				},
+				{
+					"fieldname": "restricted_child_link",
+					"fieldtype": "Link",
+					"options": child_dt_name,
+					"label": "Restricted Child Link",
+					"permlevel": 1,
+				},
+				{
+					"fieldname": "regular_link",
+					"fieldtype": "Link",
+					"options": target_dt_name,
+					"label": "Regular Link",
+				},
+			],
+		).insert()
+
+		parent_doc = frappe.get_doc(
+			{
+				"doctype": parent_dt_name,
+				"items": [{"title": "Allowed Child Title", "private_value": "Private Child Value"}],
+			}
+		).insert(ignore_permissions=True)
+		target_doc = frappe.get_doc({"doctype": target_dt_name, "title": "Protected Regular Title"}).insert(
+			ignore_permissions=True
+		)
+		child_name = parent_doc.items[0].name
+		source_doc = frappe.get_doc(
+			{
+				"doctype": source_dt_name,
+				"child_link": child_name,
+				"restricted_child_link": child_name,
+				"regular_link": target_doc.name,
+			}
+		).insert(ignore_permissions=True)
+
+		frappe.get_doc({"doctype": "Role", "role_name": test_role}).insert()
+		add_permission(source_dt_name, test_role, 0, ptype="read")
+		test_user_doc.add_roles(test_role)
+
+		try:
+			frappe.set_user(test_user)
+			result = frappe.qb.get_query(
+				source_dt_name,
+				filters={"name": source_doc.name},
+				fields=[
+					"name",
+					"child_link.title as child_title",
+					"child_link.private_value as child_private_value",
+					"restricted_child_link.title as restricted_child_title",
+					"regular_link.title as regular_title",
+				],
+				ignore_permissions=False,
+			).run(as_dict=True)[0]
+
+			self.assertEqual(result.child_title, "Allowed Child Title")
+			self.assertNotIn("child_private_value", result)
+			self.assertNotIn("restricted_child_title", result)
+			self.assertNotIn("regular_title", result)
+
+			legacy_result = frappe.get_list(
+				source_dt_name,
+				filters={"name": source_doc.name},
+				fields=[
+					"name",
+					"child_link.title as child_title",
+					"child_link.private_value as child_private_value",
+					"restricted_child_link.title as restricted_child_title",
+					"regular_link.title as regular_title",
+				],
+			)[0]
+
+			self.assertEqual(legacy_result.child_title, "Allowed Child Title")
+			self.assertNotIn("child_private_value", legacy_result)
+			self.assertNotIn("restricted_child_title", legacy_result)
+			self.assertNotIn("regular_title", legacy_result)
+		finally:
+			frappe.set_user("Administrator")
+			source_doc.delete(ignore_permissions=True)
+			parent_doc.delete(ignore_permissions=True)
+			target_doc.delete(ignore_permissions=True)
+			source_dt.delete()
+			parent_dt.delete()
+			child_dt.delete()
+			target_dt.delete()
+			test_user_doc.remove_roles(test_role)
+			frappe.delete_doc("Role", test_role, force=True)
+
 	def test_filter_direct_field_permission(self):
 		"""Test that filtering is only allowed on permitted direct fields."""
 		with setup_patched_blog_post(), setup_test_user(set_user=True) as user:
@@ -1651,6 +1791,67 @@ class TestQuery(IntegrationTestCase):
 		finally:
 			note1.delete()
 			note2.delete()
+
+	def test_autoincrement_link_join_casts_name_in_postgres(self):
+		target_dt_name = "Test Auto Link Target"
+		source_dt_name = "Test Auto Link Source"
+
+		for dt in (source_dt_name, target_dt_name):
+			frappe.delete_doc_if_exists("DocType", dt)
+
+		target_dt = new_doctype(
+			target_dt_name,
+			autoname="autoincrement",
+			title_field="target_title",
+			show_title_field_in_link=1,
+			fields=[
+				{
+					"label": "Target Title",
+					"fieldname": "target_title",
+					"fieldtype": "Data",
+					"reqd": 1,
+				}
+			],
+		).insert(ignore_permissions=True)
+		source_dt = new_doctype(
+			source_dt_name,
+			fields=[
+				{
+					"label": "Link Field",
+					"fieldname": "link_field",
+					"fieldtype": "Link",
+					"options": target_dt_name,
+					"reqd": 1,
+				}
+			],
+		).insert(ignore_permissions=True)
+
+		target_doc = frappe.get_doc(
+			{"doctype": target_dt_name, "target_title": "Autoincrement Target Title"}
+		).insert(ignore_permissions=True)
+		source_doc = frappe.get_doc({"doctype": source_dt_name, "link_field": str(target_doc.name)}).insert(
+			ignore_permissions=True
+		)
+
+		try:
+			query = frappe.qb.get_query(
+				source_dt_name,
+				fields=["name", "link_field.target_title"],
+				filters={"name": source_doc.name},
+			)
+			sql = query.get_sql()
+			result = query.run(as_dict=True)
+
+			self.assertEqual(result[0]["target_title"], target_doc.target_title)
+			if frappe.db.db_type == "postgres":
+				self.assertIn('CAST("TABTEST AUTO LINK TARGET"."NAME" AS VARCHAR(140))', sql.upper())
+			else:
+				self.assertNotIn("CAST(", sql.upper())
+		finally:
+			source_doc.delete(ignore_permissions=True)
+			target_doc.delete(ignore_permissions=True)
+			source_dt.delete(ignore_permissions=True)
+			target_dt.delete(ignore_permissions=True)
 
 	def test_multiple_dynamic_fields_group_order(self):
 		"""Test multiple dynamic fields in GROUP BY and ORDER BY."""
