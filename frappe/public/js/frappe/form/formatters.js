@@ -50,7 +50,7 @@ frappe.form.formatters = {
 		return __(frappe.form.formatters["Data"](value, df));
 	},
 	Select: function (value, df) {
-		return __(frappe.form.formatters["Data"](value, df));
+		return frappe.utils.get_select_option_label(value, df);
 	},
 	Float: function (value, docfield, options, doc) {
 		if (value === null) {

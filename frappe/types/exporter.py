@@ -20,6 +20,7 @@ import frappe
 from frappe import scrub
 from frappe.model import NO_VALUE_FIELDS, table_fields
 from frappe.types import DF
+from frappe.utils.data import get_select_options
 
 field_template = "{field}: {type}"
 
@@ -198,7 +199,7 @@ class TypeExporter:
 			if not field.options:
 				# Could be dynamic
 				return "[None]"
-			options = [o.strip() for o in field.options.split("\n")]
+			options = get_select_options(field.options, field.options_has_label)
 			return json.dumps(options)
 
 	@staticmethod

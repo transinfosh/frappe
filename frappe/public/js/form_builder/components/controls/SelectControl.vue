@@ -10,18 +10,26 @@ let update_control = ref(true);
 
 function get_options() {
 	let options = props.df.options;
+	let translate_label = !(props.df.doctype == "DocField" && props.df.fieldname == "fieldtype");
 
 	if (typeof options == "string") {
-		options = options.split("\n") || "";
-		options = options.map((opt) => {
-			return { label: __(opt), value: opt };
-		});
+		options = frappe.utils.get_select_options(
+			options,
+			props.df.options_has_label,
+			false,
+			translate_label,
+			props.df.parent
+		);
 	}
 
 	if (options?.length && typeof options[0] == "string") {
-		options = options.map((opt) => {
-			return { label: __(opt), value: opt };
-		});
+		options = frappe.utils.get_select_options(
+			options,
+			props.df.options_has_label,
+			false,
+			translate_label,
+			props.df.parent
+		);
 	}
 
 	if (props.df.fieldname == "fieldtype") {

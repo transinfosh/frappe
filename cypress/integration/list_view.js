@@ -1,4 +1,6 @@
 context("List View", () => {
+	const select_label_filter_doctype = "Test Select Label Filter";
+
 	before(() => {
 		cy.login();
 		cy.visit("/desk/website");
@@ -6,7 +8,48 @@ context("List View", () => {
 			.window()
 			.its("frappe")
 			.then((frappe) => {
-				return frappe.xcall("frappe.tests.ui_test_helpers.setup_workflow");
+				return frappe.xcall("frappe.tests.ui_test_helpers.setup_workflow").then(() => {
+					return frappe.xcall("frappe.tests.ui_test_helpers.create_doctype", {
+						name: select_label_filter_doctype,
+						fields: [
+							{
+								label: "Status",
+								fieldname: "status",
+								fieldtype: "Select",
+								options: "\n1,Pending Inspection\n2,Approved",
+								options_has_label: 1,
+								in_standard_filter: 1,
+							},
+						],
+					});
+				});
+			});
+	});
+
+	it("shows labels in standard filters for Select fields with labeled options", () => {
+		cy.go_to_list(select_label_filter_doctype);
+		cy.clear_cache();
+		cy.go_to_list(select_label_filter_doctype);
+
+		cy.get('.frappe-control[data-fieldname="status"] select')
+			.should("be.visible")
+			.as("status_filter");
+
+		cy.get("@status_filter")
+			.find('option[value="1"]')
+			.should("have.text", "Pending Inspection");
+		cy.get("@status_filter").find('option[value="2"]').should("have.text", "Approved");
+
+		cy.get("@status_filter").select("Pending Inspection").should("have.value", "1");
+		cy.window()
+			.its("cur_list.filter_area")
+			.then((filter_area) => {
+				expect(filter_area.get_standard_filters()).to.deep.include([
+					select_label_filter_doctype,
+					"status",
+					"=",
+					"1",
+				]);
 			});
 	});
 

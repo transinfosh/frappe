@@ -13,7 +13,7 @@ from frappe.core.doctype.version.version import get_diff
 from frappe.model import no_value_fields
 from frappe.utils import cint, cstr, duration_to_seconds, flt, update_progress_bar
 from frappe.utils.csvutils import get_csv_content_from_google_sheets, read_csv_content
-from frappe.utils.data import escape_html
+from frappe.utils.data import escape_html, get_select_options
 from frappe.utils.xlsxutils import (
 	read_xls_file_from_attached_file,
 	read_xlsx_file_from_attached_file,
@@ -722,7 +722,7 @@ class Row:
 	def validate_value(self, value, col):
 		df = col.df
 		if df.fieldtype == "Select":
-			select_options = get_select_options(df)
+			select_options = get_select_options(df.options, df.options_has_label, True)
 			if select_options and cstr(value) not in select_options:
 				options_string = ", ".join(frappe.bold(d) for d in select_options)
 				msg = _("Value must be one of {0}").format(options_string)
@@ -1103,7 +1103,7 @@ class Column:
 					}
 				)
 		elif self.df.fieldtype == "Select":
-			options = get_select_options(self.df)
+			options = get_select_options(self.df.options, self.df.options_has_label, True)
 			if options:
 				values = {cstr(v) for v in self.column_values if v}
 				invalid = values - set(options)
@@ -1326,10 +1326,6 @@ def df_as_json(df):
 		"parent": df.parent,
 		"default": df.default,
 	}
-
-
-def get_select_options(df):
-	return [d for d in (df.options or "").split("\n") if d]
 
 
 def create_import_log(data_import, log_index, log_details):
