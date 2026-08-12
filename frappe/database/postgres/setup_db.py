@@ -116,5 +116,5 @@ def drop_user_and_database(db_name, db_user):
 		(db_name,),
 	)
 	root_conn.sql("end")
-	root_conn.sql(f"DROP DATABASE IF EXISTS {db_name}")
-	root_conn.sql(f"DROP USER IF EXISTS {db_user}")
+	root_conn.sql(f'DROP DATABASE IF EXISTS "{db_name}"')
+	root_conn.sql(f'DROP USER IF EXISTS "{db_user}"')
