@@ -94,7 +94,7 @@ def _apply_date_field_filter_conversion(value, operator: str, doctype: str, fiel
 		elif isinstance(value, datetime.datetime):
 			return value.date()
 
-	except (AttributeError, TypeError, KeyError):
+	except AttributeError, TypeError, KeyError:
 		pass
 
 	return value
@@ -187,6 +187,7 @@ MAX_LIMIT = 18446744073709551615
 
 # Direct mapping from uppercase function names to pypika function classes
 FUNCTION_MAPPING = {
+	"CAST": functions.Cast,
 	"COUNT": functions.Count,
 	"SUM": functions.Sum,
 	"AVG": functions.Avg,
@@ -722,7 +723,7 @@ class Engine:
 				else:
 					try:
 						fallback_value = int(fallback_sql)
-					except (ValueError, TypeError):
+					except ValueError, TypeError:
 						fallback_value = fallback_sql
 
 				return operator_fn(_field, ValueWrapper(fallback_value))
@@ -751,7 +752,7 @@ class Engine:
 				else:
 					try:
 						fallback_value = int(fallback_sql)
-					except (ValueError, TypeError):
+					except ValueError, TypeError:
 						fallback_value = fallback_sql
 
 				if fallback_value == _value:
@@ -1480,6 +1481,10 @@ class Engine:
 			elif isinstance(field, LinkTableField):
 				# Check permission for the link field *in the parent doctype*
 				if field.link_fieldname in permitted_fields_set:
+					if field.is_child_link_title_field():
+						allowed_fields.append(field)
+						continue
+
 					# Also check if user has permission to read/select the target doctype
 					target_doctype = field.doctype
 					has_target_perm = frappe.has_permission(
@@ -1623,9 +1628,16 @@ class Engine:
 				# permissions are already checked by has_permission
 				return
 
-			self.query = self.query.inner_join(self.permission_table).on(
-				self.table.parent == self.permission_table.name
-			)
+			if parent_meta.autoname == "autoincrement":
+				from frappe.query_builder.functions import Cast
+
+				self.query = self.query.inner_join(self.permission_table).on(
+					self.table.parent == Cast(self.permission_table.name, "VARCHAR(140)")
+				)
+			else:
+				self.query = self.query.inner_join(self.permission_table).on(
+					self.table.parent == self.permission_table.name
+				)
 
 		if condition := self.get_permission_conditions(self.permission_doctype, self.permission_table):
 			self.query = self.query.where(condition)
@@ -2164,6 +2176,20 @@ class LinkTableField(DynamicTableField):
 		self.table = frappe.qb.DocType(self.doctype)
 		self.field = self.table[self.fieldname]
 
+	def is_child_link_title_field(self) -> bool:
+		meta = frappe.get_meta(self.doctype)
+		title_field = meta.get("title_field")
+		title_df = meta.get_field(title_field) if title_field else None
+
+		return bool(
+			meta.istable
+			and meta.get("show_title_field_in_link")
+			and title_field
+			and self.fieldname == title_field
+			and title_df
+			and title_df.permlevel == 0
+		)
+
 	def apply_select(self, query: QueryBuilder, engine: "Engine" = None) -> QueryBuilder:
 		query = self.apply_join(query, engine=engine)
 		return query.select(self.field.as_(self.alias or None))
@@ -2178,7 +2204,12 @@ class LinkTableField(DynamicTableField):
 		if not query.is_joined(self.table):
 			clause = self.table.name == getattr(main_table, self.link_fieldname)
 
-			if engine and engine.apply_permissions:
+			if frappe.db.db_type == "postgres" and frappe.get_meta(self.doctype).autoname == "autoincrement":
+				from frappe.query_builder.functions import Cast
+
+				clause = Cast(self.table.name, "VARCHAR(140)") == getattr(main_table, self.link_fieldname)
+
+			if engine and engine.apply_permissions and not self.is_child_link_title_field():
 				if condition := engine.get_permission_conditions(self.doctype, self.table):
 					clause &= condition
 
