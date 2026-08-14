@@ -47,6 +47,11 @@ class TestBootData(IntegrationTestCase):
 			self.assertEqual(DeskViews.get_allowed_reports(cache=True), {})
 			self.assertEqual(build.call_count, 1)
 
+	def test_allowed_page_info_includes_module(self):
+		pages = DeskViews._build_user_pages_or_reports("Page", "Administrator")
+
+		self.assertEqual(pages["permission-manager"]["module"], "Core")
+
 
 class TestPermissionQueries(IntegrationTestCase):
 	@classmethod

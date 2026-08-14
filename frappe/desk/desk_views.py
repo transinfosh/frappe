@@ -170,7 +170,7 @@ class DeskViews:
 		if is_report:
 			columns = (report.name.as_("title"), report.ref_doctype, report.report_type)
 		else:
-			columns = (page.title.as_("title"),)
+			columns = (page.title.as_("title"), page.module)
 
 		customRole = DocType("Custom Role")
 		hasRole = DocType("Has Role")
@@ -194,6 +194,8 @@ class DeskViews:
 
 		for p in pages_with_custom_roles:
 			has_role[p.name] = {"modified": p.modified, "title": p.title, "ref_doctype": p.ref_doctype}
+			if not is_report:
+				has_role[p.name]["module"] = p.module
 
 		subq = (
 			frappe.qb.from_(customRole)
@@ -223,6 +225,8 @@ class DeskViews:
 				has_role[p.name] = {"modified": p.modified, "title": p.title}
 				if parent == "Report":
 					has_role[p.name].update({"ref_doctype": p.ref_doctype})
+				else:
+					has_role[p.name]["module"] = p.module
 
 		no_of_roles = SubQuery(
 			frappe.qb.from_(hasRole).select(Count("*")).where(hasRole.parent == parentTable.name)
@@ -240,6 +244,8 @@ class DeskViews:
 				has_role[r.name] = {"modified": r.modified, "title": r.title}
 				if is_report:
 					has_role[r.name] |= {"ref_doctype": r.ref_doctype}
+				else:
+					has_role[r.name]["module"] = r.module
 
 		if is_report:
 			if not has_permission("Report", user=user, print_logs=False):

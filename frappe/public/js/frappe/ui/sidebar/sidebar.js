@@ -678,7 +678,10 @@ frappe.ui.Sidebar = class Sidebar {
 				target = route[1];
 			} else {
 				const entity = this.entity_from_route(route);
-				const module = router?.meta?.module;
+				const module =
+					router?.meta?.module ||
+					frappe.boot.page_info?.[route[0]]?.module ||
+					locals.Page?.[route[0]]?.module;
 				target = this.resolve_sidebar(entity, module);
 			}
 
@@ -695,6 +698,10 @@ frappe.ui.Sidebar = class Sidebar {
 	}
 
 	entity_from_route(route) {
+		if (frappe.boot.page_info?.[route[0]]) {
+			return route[0];
+		}
+
 		switch (route.length) {
 			case 1:
 				return route[0];
