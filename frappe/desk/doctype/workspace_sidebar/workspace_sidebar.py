@@ -123,18 +123,22 @@ def create_workspace_sidebar_for_workspaces():
 
 	all_workspaces = (
 		frappe.qb.from_(workspace)
-		.select(workspace.name)
+		.select(workspace.name, workspace.app, workspace.module)
 		.where((workspace.public == 1) & (workspace.name != "Welcome Workspace"))
-	).run(pluck=True)
+	).run(as_dict=True)
 
 	existing_sidebars = frappe.get_all("Workspace Sidebar", pluck="title")
 	for workspace in all_workspaces:
-		if workspace not in existing_sidebars:
-			workspace_doc = frappe.get_doc("Workspace", workspace)
+		if workspace.name not in existing_sidebars:
+			app = workspace.app or frappe.db.get_value("Module Def", workspace.module, "app_name")
+			if get_app_sidebar_for_workspace(workspace.name, app, workspace.module):
+				continue
+
+			workspace_doc = frappe.get_doc("Workspace", workspace.name)
 			sidebar = frappe.new_doc("Workspace Sidebar")
-			sidebar.title = workspace
-			sidebar.header_icon = frappe.db.get_value("Workspace", workspace, "icon")
-			click.echo(f"Creating Sidebar Items for {workspace}")
+			sidebar.title = workspace.name
+			sidebar.header_icon = workspace_doc.icon
+			click.echo(f"Creating Sidebar Items for {workspace.name}")
 			shortcuts = workspace_doc.shortcuts
 
 			items = []
@@ -142,7 +146,13 @@ def create_workspace_sidebar_for_workspaces():
 			# Adding the workspace itself as home
 			workspace_sidebar_item = frappe.new_doc("Workspace Sidebar Item")
 			workspace_sidebar_item.update(
-				{"label": "Home", "link_to": workspace, "link_type": "Workspace", "type": "Link", "idx": 0}
+				{
+					"label": "Home",
+					"link_to": workspace.name,
+					"link_type": "Workspace",
+					"type": "Link",
+					"idx": 0,
+				}
 			)
 			items.append(workspace_sidebar_item)
 			# Process Shortcuts
@@ -158,6 +168,41 @@ def create_workspace_sidebar_for_workspaces():
 				sidebar.save()
 			except Exception as e:
 				frappe.log_error(title="Failed To Create Sidebar", message=e)
+
+
+def get_app_sidebar_for_workspace(workspace_name, app, module):
+	"""Return the public app sidebar that should be used for a workspace."""
+	if not app:
+		return None
+
+	sidebars = frappe.get_all(
+		"Workspace Sidebar",
+		filters={"app": app, "for_user": ["is", "not set"]},
+		fields=["name", "module"],
+	)
+	if not sidebars:
+		return None
+
+	sidebar_names = [sidebar.name for sidebar in sidebars]
+	linked_sidebar = frappe.db.get_value(
+		"Workspace Sidebar Item",
+		{
+			"parent": ["in", sidebar_names],
+			"parenttype": "Workspace Sidebar",
+			"link_type": "Workspace",
+			"link_to": workspace_name,
+		},
+		"parent",
+	)
+	if linked_sidebar:
+		return linked_sidebar
+
+	module_sidebars = [sidebar.name for sidebar in sidebars if sidebar.module == module]
+	if len(module_sidebars) == 1:
+		return module_sidebars[0]
+
+	if len(sidebars) == 1:
+		return sidebars[0].name
 
 
 @frappe.whitelist()
@@ -267,7 +312,7 @@ def get_module_info(module_name):
 			fieldnames.append("title")
 			pluck = None
 		module_info[entity] = frappe.get_all(
-			entity, filters=filters, fields=fieldnames, pluck=pluck, order_by="creation asc"
+			entity, filters=filters, fields=fieldnames, pluck=pluck, order_by="name asc"
 		)
 
 	# if module info has no workspaces, then move doctypes to the front
@@ -279,8 +324,6 @@ def get_module_info(module_name):
 			"Dashboard": module_info.get("Dashboard"),
 			"Page": module_info.get("Page"),
 		}
-	doctype_limit = 3
-	module_info["DocType"] = (module_info.get("DocType") or [])[:doctype_limit]
 	return module_info
 
 

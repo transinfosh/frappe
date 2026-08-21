@@ -804,6 +804,21 @@ frappe.ui.Sidebar = class Sidebar {
 		});
 		return sidebars;
 	}
+	get_app_sidebar_for_workspace(workspace) {
+		if (!workspace.app) return;
+
+		const sidebars = Object.entries(this.all_sidebar_items)
+			.filter(([, sidebar]) => sidebar.app === workspace.app)
+			.map(([name, sidebar]) => ({ name, sidebar }));
+		const module_sidebars = sidebars.filter(({ sidebar }) => sidebar.module === workspace.module);
+
+		if (module_sidebars.length === 1) {
+			return module_sidebars[0].sidebar.label || module_sidebars[0].name;
+		}
+		if (sidebars.length === 1) {
+			return sidebars[0].sidebar.label || sidebars[0].name;
+		}
+	}
 	setup_reload() {
 		const me = this;
 		this.item_sidebar_map = {};

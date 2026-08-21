@@ -69,7 +69,8 @@ frappe.views.Workspace = class Workspace {
 	setup_sidebar() {
 		if (this._page) {
 			const sidebars = this.sidebar.get_workspace_sidebars(this._page.name);
-			this.sidebar.setup(sidebars[0] || this._page.name);
+			const sidebar = sidebars[0] || this.sidebar.get_app_sidebar_for_workspace(this._page);
+			this.sidebar.setup(sidebar || this._page.name);
 		}
 	}
 	prepare_container() {
