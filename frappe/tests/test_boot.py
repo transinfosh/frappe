@@ -52,6 +52,14 @@ class TestBootData(IntegrationTestCase):
 
 		self.assertEqual(pages["permission-manager"]["module"], "Core")
 
+	def test_inaccessible_single_doctype_is_excluded_from_desk_views(self):
+		views = DeskViews()
+		views.can_read = ["System Health Report"]
+		views.restricted_doctypes = ["System Health Report"]
+
+		with self.set_user("Guest"):
+			self.assertFalse(views.is_item_allowed("System Health Report", "DocType"))
+
 
 class TestPermissionQueries(IntegrationTestCase):
 	@classmethod
