@@ -19,7 +19,7 @@ on:
     types: [released]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   regen-notes:
@@ -27,24 +27,16 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Get Frappe Release Bot token
-      id: app-token
-      uses: actions/create-github-app-token@v3
-      with:
-        client-id: ${{ vars.FRAPPE_BOT_CLIENT_ID }}
-        private-key: ${{ secrets.FRAPPE_BOT_PRIVATE_KEY }}
-        permission-contents: write
     - name: Update notes
       shell: bash
       run: |
-        NEW_NOTES=$(gh api --method POST -H "Accept: application/vnd.github+json"  /repos/frappe/frappe/releases/generate-notes  -f tag_name=$RELEASE_TAG \
+        NEW_NOTES=$(gh api --method POST -H "Accept: application/vnd.github+json" "repos/$GITHUB_REPOSITORY/releases/generate-notes" -f tag_name="$RELEASE_TAG" \
           | jq -r '.body' \
           | sed -E '/^\* (chore|ci|test|docs|style)/d' \
           | sed -E 's/by @mergify //'
         )
-        RELEASE_ID=$(gh api -H "Accept: application/vnd.github+json" /repos/frappe/frappe/releases/tags/$RELEASE_TAG | jq -r '.id')
-        gh api --method PATCH -H "Accept: application/vnd.github+json" /repos/frappe/frappe/releases/$RELEASE_ID -f body="$NEW_NOTES"
+        gh release edit "$RELEASE_TAG" --notes "$NEW_NOTES" --repo "$GITHUB_REPOSITORY"
 
       env:
-        GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        GH_TOKEN: ${{ github.token }}
         RELEASE_TAG: ${{ github.event.inputs.tag_name || github.event.release.tag_name }}
