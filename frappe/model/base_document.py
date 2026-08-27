@@ -5,6 +5,7 @@ import functools
 import json
 import re
 import weakref
+from collections.abc import Mapping
 from types import MappingProxyType
 from typing import TYPE_CHECKING, TypeVar
 
@@ -17,6 +18,7 @@ from frappe.model import (
 	display_fieldtypes,
 	float_like_fields,
 	get_permitted_fields,
+	optional_fields,
 	table_fields,
 )
 from frappe.model.docstatus import DocStatus
@@ -321,6 +323,92 @@ class BaseDocument:
 				and key not in self.dont_update_if_missing
 			):
 				self.set(key, value)
+
+	def update_from_patch(self, d):
+		"""Partially update fields, merging existing child rows by name."""
+		fields = [(key, value, self._validate_patch_field(key)) for key, value in d.items()]
+		for key, value, df in fields:
+			if df.fieldtype not in table_fields:
+				self.set(key, value)
+				continue
+
+			if key not in self._non_computed_table_fieldnames:
+				frappe.throw(_("Field {0} cannot be updated").format(frappe.bold(key)))
+			if not isinstance(value, list):
+				frappe.throw(_("Child table field {0} must be a list").format(frappe.bold(key)))
+
+			existing_rows = {row.name: row for row in self.get(key) if row.name and not row.is_new()}
+			validated_rows = []
+			seen_names = set()
+			for row_data in value:
+				if not isinstance(row_data, Mapping):
+					frappe.throw(_("Each row in child table {0} must be an object").format(frappe.bold(key)))
+
+				row_data = dict(row_data)
+				if "name" in row_data:
+					row_name = row_data.pop("name")
+					if not isinstance(row_name, str) or not row_name:
+						frappe.throw(
+							_("Child row name in field {0} must be a non-empty string").format(
+								frappe.bold(key)
+							)
+						)
+					if row_name in seen_names:
+						frappe.throw(
+							_("Duplicate child row {0} in field {1}").format(
+								frappe.bold(row_name), frappe.bold(key)
+							)
+						)
+					seen_names.add(row_name)
+
+					row = existing_rows.get(row_name)
+					if row is None:
+						frappe.throw(
+							_("Child row {0} does not belong to field {1} of this document").format(
+								frappe.bold(row_name), frappe.bold(key)
+							)
+						)
+				else:
+					row = self._init_child({}, key)
+
+				for fieldname in row_data:
+					row._validate_patch_field(fieldname)
+				validated_rows.append((row, row_data))
+
+			patched_rows = []
+			for row, row_data in validated_rows:
+				row.update_from_patch(row_data)
+				patched_rows.append(row)
+
+			self.set(key, patched_rows)
+			for idx, row in enumerate(self.get(key), 1):
+				row.idx = idx
+
+		return self
+
+	def _validate_patch_field(self, fieldname):
+		protected_fields = {*default_fields, *child_table_fields, *optional_fields, *RESERVED_KEYWORDS}
+		if fieldname in protected_fields or fieldname.startswith("_"):
+			frappe.throw(_("Field {0} cannot be updated").format(frappe.bold(fieldname)))
+
+		df = self.meta.get_field(fieldname)
+		if not df or df.fieldtype in display_fieldtypes:
+			frappe.throw(
+				_("Field {0} does not exist on {1}").format(frappe.bold(fieldname), frappe.bold(self.doctype))
+			)
+		if df.read_only or df.fieldtype == "Read Only":
+			frappe.throw(_("Field {0} is read only").format(frappe.bold(fieldname)))
+		if (
+			frappe.session.user != "Administrator"
+			and df.permlevel
+			and not self.has_permlevel_access_to(fieldname, df=df, permission_type="write")
+		):
+			frappe.throw(
+				_("No permission to edit field {0}").format(frappe.bold(fieldname)),
+				frappe.PermissionError,
+			)
+
+		return df
 
 	def get_db_value(self, key):
 		return frappe.db.get_value(self.doctype, self.name, key)

@@ -207,6 +207,23 @@ def update_doc(doctype: str, name: str):
 	return doc.as_dict()
 
 
+def patch_doc(doctype: str, name: str):
+	data = frappe.form_dict.copy()
+	data.pop("sid", None)
+
+	doc = frappe.get_doc(doctype, name, for_update=True)
+	doc.check_permission("write")
+	doc.update_from_patch(data)
+	doc.save()
+	doc.apply_fieldlevel_read_permissions()
+
+	# check for child table doctype
+	if doc.get("parenttype"):
+		frappe.get_doc(doc.parenttype, doc.parent).save()
+
+	return doc.as_dict()
+
+
 def delete_doc(doctype: str, name: str):
 	frappe.client.delete_doc(doctype, name)
 	frappe.response.http_status_code = 202
@@ -289,7 +306,8 @@ url_rules = [
 	Rule("/document/<doctype>", methods=["POST"], endpoint=create_doc),
 	Rule("/document/<doctype>/<path:name>/", methods=["GET"], endpoint=read_doc),
 	Rule("/document/<doctype>/<path:name>/copy", methods=["GET"], endpoint=copy_doc),
-	Rule("/document/<doctype>/<path:name>/", methods=["PATCH", "PUT"], endpoint=update_doc),
+	Rule("/document/<doctype>/<path:name>/", methods=["PATCH"], endpoint=patch_doc),
+	Rule("/document/<doctype>/<path:name>/", methods=["PUT"], endpoint=update_doc),
 	Rule("/document/<doctype>/<path:name>/", methods=["DELETE"], endpoint=delete_doc),
 	Rule(
 		"/document/<doctype>/<path:name>/method/<method>/",

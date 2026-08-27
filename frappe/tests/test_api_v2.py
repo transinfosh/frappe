@@ -162,6 +162,376 @@ class TestResourceAPIV2(FrappeAPITestCase):
 		self.assertFalse(response.json["errors"][0].get("exception"))
 
 
+class TestPatchDocumentAPIV2(FrappeAPITestCase):
+	version = "v2"
+
+	def setUp(self):
+		super().setUp()
+		self.event = frappe.get_doc(
+			{
+				"doctype": "Event",
+				"subject": "PATCH original subject",
+				"starts_on": "2026-08-27 09:00:00",
+				"event_type": "Public",
+				"event_participants": [
+					{
+						"reference_doctype": "DocType",
+						"reference_docname": "Event",
+						"email": "original@example.com",
+					},
+					{
+						"reference_doctype": "DocType",
+						"reference_docname": "ToDo",
+						"email": "second@example.com",
+					},
+				],
+				"notifications": [{"type": "Email", "before": 1, "interval": "Day"}],
+			}
+		).insert()
+		self.events_to_delete = [self.event.name]
+		self.child_rows_to_delete = []
+		frappe.db.commit()
+
+	def tearDown(self):
+		for name in self.events_to_delete:
+			frappe.delete_doc_if_exists("Event", name, force=True)
+		for name in self.child_rows_to_delete:
+			frappe.db.delete("Event Participants", {"name": name})
+		frappe.db.commit()
+		super().tearDown()
+
+	def patch_event(self, data):
+		return self.patch(self.resource("Event", self.event.name), {"sid": self.sid, **data})
+
+	def test_patch_updates_only_provided_parent_field(self):
+		response = self.patch_event({"status": "Closed"})
+
+		self.assertEqual(response.status_code, 200)
+		self.assertEqual(response.json["data"]["status"], "Closed")
+		self.assertEqual(response.json["data"]["subject"], "PATCH original subject")
+
+	def test_patch_explicit_null_clears_optional_parent_field(self):
+		self.event.description = "Original description"
+		self.event.save()
+		frappe.db.commit()
+
+		response = self.patch_event({"description": None})
+
+		self.assertEqual(response.status_code, 200)
+		self.assertIsNone(response.json["data"]["description"])
+
+	def test_patch_omitted_child_table_remains_unchanged(self):
+		original_rows = [row.as_dict() for row in self.event.event_participants]
+
+		response = self.patch_event({"status": "Closed"})
+
+		self.assertEqual(response.status_code, 200)
+		patched_rows = response.json["data"]["event_participants"]
+		self.assertEqual([row["name"] for row in patched_rows], [row["name"] for row in original_rows])
+		self.assertEqual([row["email"] for row in patched_rows], [row["email"] for row in original_rows])
+
+	def test_patch_handles_multiple_child_tables_independently(self):
+		participant = self.event.event_participants[0]
+		notification = self.event.notifications[0]
+		response = self.patch_event(
+			{
+				"event_participants": [{"name": participant.name, "email": "participant@example.com"}],
+				"notifications": [{"name": notification.name, "before": 3}],
+			}
+		)
+
+		self.assertEqual(response.status_code, 200)
+		self.assertEqual(response.json["data"]["event_participants"][0]["reference_docname"], "Event")
+		self.assertEqual(response.json["data"]["event_participants"][0]["email"], "participant@example.com")
+		self.assertEqual(response.json["data"]["notifications"][0]["type"], "Email")
+		self.assertEqual(response.json["data"]["notifications"][0]["before"], 3)
+
+	def test_patch_existing_child_row_preserves_omitted_fields(self):
+		row = self.event.event_participants[0]
+		omitted_row = self.event.event_participants[1]
+
+		response = self.patch_event(
+			{"event_participants": [{"name": row.name, "email": "patched@example.com"}]}
+		)
+
+		self.assertEqual(response.status_code, 200)
+		patched_row = response.json["data"]["event_participants"][0]
+		self.assertEqual(patched_row["reference_doctype"], "DocType")
+		self.assertEqual(patched_row["reference_docname"], "Event")
+		self.assertEqual(patched_row["email"], "patched@example.com")
+		self.assertFalse(frappe.db.exists("Event Participants", omitted_row.name))
+
+	def test_patch_adds_child_row_without_name(self):
+		response = self.patch_event(
+			{
+				"event_participants": [
+					{
+						"reference_doctype": "DocType",
+						"reference_docname": "Event",
+						"email": "new@example.com",
+					}
+				]
+			}
+		)
+
+		self.assertEqual(response.status_code, 200)
+		self.assertTrue(response.json["data"]["event_participants"][0]["name"])
+		self.assertEqual(response.json["data"]["event_participants"][0]["email"], "new@example.com")
+
+	def test_patch_empty_child_table_deletes_all_rows(self):
+		response = self.patch_event({"event_participants": []})
+
+		self.assertEqual(response.status_code, 200)
+		self.assertEqual(response.json["data"]["event_participants"], [])
+		self.assertEqual(
+			frappe.db.count(
+				"Event Participants", {"parent": self.event.name, "parentfield": "event_participants"}
+			),
+			0,
+		)
+
+	def test_patch_child_table_combines_update_add_delete_and_request_order(self):
+		kept_row = self.event.event_participants[0]
+		deleted_row = self.event.event_participants[1]
+		response = self.patch_event(
+			{
+				"event_participants": [
+					{
+						"reference_doctype": "DocType",
+						"reference_docname": "ToDo",
+						"email": "new-first@example.com",
+					},
+					{"name": kept_row.name, "email": "kept-second@example.com"},
+				]
+			}
+		)
+
+		self.assertEqual(response.status_code, 200)
+		rows = response.json["data"]["event_participants"]
+		self.assertEqual([row["email"] for row in rows], ["new-first@example.com", "kept-second@example.com"])
+		self.assertEqual([row["idx"] for row in rows], [1, 2])
+		self.assertNotEqual(rows[0]["name"], kept_row.name)
+		self.assertEqual(rows[1]["name"], kept_row.name)
+		self.assertFalse(frappe.db.exists("Event Participants", deleted_row.name))
+
+	def test_patch_rejects_duplicate_child_row_name(self):
+		row = self.event.event_participants[0]
+
+		with suppress_stdout():
+			response = self.patch_event(
+				{
+					"event_participants": [
+						{"name": row.name, "email": "first@example.com"},
+						{"name": row.name, "email": "duplicate@example.com"},
+					]
+				}
+			)
+
+		self.assertEqual(response.status_code, 417)
+		self.assertEqual(response.json["errors"][0]["type"], "ValidationError")
+		self.assertIn("Duplicate child row", response.json["errors"][0]["message"])
+
+	def test_patch_rejects_child_row_from_another_parent(self):
+		other_event = frappe.copy_doc(self.event).insert()
+		self.events_to_delete.append(other_event.name)
+		frappe.db.commit()
+		foreign_row = other_event.event_participants[0]
+
+		with suppress_stdout():
+			response = self.patch_event(
+				{"event_participants": [{"name": foreign_row.name, "email": "stolen@example.com"}]}
+			)
+
+		self.assertEqual(response.status_code, 417)
+		self.assertIn("does not belong", response.json["errors"][0]["message"])
+		self.assertEqual(
+			frappe.db.get_value("Event Participants", foreign_row.name, "email"), "original@example.com"
+		)
+
+	def test_patch_rejects_child_row_from_another_parentfield(self):
+		foreign_row = frappe.copy_doc(self.event.event_participants[0])
+		foreign_row.parent = self.event.name
+		foreign_row.parenttype = "Event"
+		foreign_row.parentfield = "notifications"
+		foreign_row.insert()
+		self.child_rows_to_delete.append(foreign_row.name)
+		frappe.db.commit()
+
+		with suppress_stdout():
+			response = self.patch_event(
+				{"event_participants": [{"name": foreign_row.name, "email": "moved@example.com"}]}
+			)
+
+		self.assertEqual(response.status_code, 417)
+		self.assertIn("does not belong", response.json["errors"][0]["message"])
+		self.assertEqual(
+			frappe.db.get_value("Event Participants", foreign_row.name, "parentfield"), "notifications"
+		)
+
+	def test_patch_new_child_missing_mandatory_field_rolls_back_entire_request(self):
+		with suppress_stdout():
+			response = self.patch_event(
+				{
+					"status": "Closed",
+					"event_participants": [{"email": "missing-required@example.com"}],
+				}
+			)
+
+		self.assertEqual(response.status_code, 417)
+		self.assertEqual(response.json["errors"][0]["type"], "MandatoryError")
+		self.assertEqual(frappe.db.get_value("Event", self.event.name, "status"), "Open")
+		self.assertEqual(
+			frappe.db.count(
+				"Event Participants", {"parent": self.event.name, "parentfield": "event_participants"}
+			),
+			2,
+		)
+
+	def test_patch_explicit_null_on_mandatory_child_field_fails(self):
+		row = self.event.event_participants[0]
+
+		with suppress_stdout():
+			response = self.patch_event(
+				{
+					"event_participants": [
+						{"name": row.name, "reference_docname": None, "email": "not-saved@example.com"}
+					]
+				}
+			)
+
+		self.assertEqual(response.status_code, 417)
+		self.assertEqual(response.json["errors"][0]["type"], "MandatoryError")
+		self.assertEqual(frappe.db.get_value("Event Participants", row.name, "reference_docname"), "Event")
+		self.assertEqual(frappe.db.get_value("Event Participants", row.name, "email"), "original@example.com")
+
+	def test_patch_rejects_internal_and_unknown_parent_fields(self):
+		for fieldname, value in (
+			("name", "OTHER-NAME"),
+			("owner", "Guest"),
+			("flags", {}),
+			("unknown_internal", "value"),
+		):
+			with self.subTest(fieldname=fieldname), suppress_stdout():
+				response = self.patch_event({fieldname: value})
+
+			self.assertEqual(response.status_code, 417)
+			self.assertEqual(response.json["errors"][0]["type"], "ValidationError")
+
+	def test_patch_rejects_read_only_field(self):
+		with suppress_stdout():
+			response = self.patch_event({"google_meet_link": "https://example.com/meeting"})
+
+		self.assertEqual(response.status_code, 417)
+		self.assertIn("is read only", response.json["errors"][0]["message"])
+
+	def test_patch_rejects_internal_child_fields(self):
+		row = self.event.event_participants[0]
+
+		with suppress_stdout():
+			response = self.patch_event(
+				{
+					"event_participants": [
+						{"name": row.name, "parent": "OTHER", "email": "ignored@example.com"}
+					]
+				}
+			)
+
+		self.assertEqual(response.status_code, 417)
+		self.assertIn("cannot be updated", response.json["errors"][0]["message"])
+		self.assertEqual(frappe.db.get_value("Event Participants", row.name, "email"), "original@example.com")
+
+	def test_patch_rejects_invalid_child_table_value(self):
+		with suppress_stdout():
+			response = self.patch_event({"event_participants": {"email": "not-a-list@example.com"}})
+
+		self.assertEqual(response.status_code, 417)
+		self.assertIn("must be a list", response.json["errors"][0]["message"])
+
+	def test_patch_rejects_invalid_child_row_value(self):
+		with suppress_stdout():
+			response = self.patch_event({"event_participants": ["not-an-object"]})
+
+		self.assertEqual(response.status_code, 417)
+		self.assertIn("must be an object", response.json["errors"][0]["message"])
+
+	def test_patch_rejects_explicit_empty_child_row_name(self):
+		for row_name in (None, "", []):
+			with self.subTest(row_name=row_name), suppress_stdout():
+				response = self.patch_event(
+					{"event_participants": [{"name": row_name, "email": "new@example.com"}]}
+				)
+
+			self.assertEqual(response.status_code, 417)
+			self.assertIn("must be a non-empty string", response.json["errors"][0]["message"])
+
+	def test_patch_requires_write_permission(self):
+		response = requests.patch(self.resource("Event", self.event.name), json={"status": "Closed"})
+
+		self.assertEqual(response.status_code, 403)
+		self.assertEqual(response.json()["errors"][0]["type"], "PermissionError")
+		self.assertEqual(frappe.db.get_value("Event", self.event.name, "status"), "Open")
+
+	def test_patch_response_matches_v2_document_update_shape(self):
+		response = self.patch_event({"status": "Closed"})
+
+		self.assertEqual(response.status_code, 200)
+		self.assertEqual(set(response.json), {"data"})
+		self.assertEqual(response.json["data"]["doctype"], "Event")
+		self.assertEqual(response.json["data"]["name"], self.event.name)
+
+	def test_put_keeps_full_child_replacement_semantics(self):
+		row = self.event.event_participants[0]
+		response = self.put(
+			self.resource("Event", self.event.name),
+			{
+				"sid": self.sid,
+				"event_participants": [
+					{
+						"name": row.name,
+						"reference_doctype": "DocType",
+						"reference_docname": "Event",
+						"email": "put@example.com",
+					}
+				],
+			},
+		)
+
+		self.assertEqual(response.status_code, 200)
+		self.assertEqual(len(response.json["data"]["event_participants"]), 1)
+		self.assertEqual(response.json["data"]["event_participants"][0]["email"], "put@example.com")
+
+	def test_put_keeps_rejecting_partial_existing_child_rows(self):
+		row = self.event.event_participants[0]
+
+		with suppress_stdout():
+			response = self.put(
+				self.resource("Event", self.event.name),
+				{
+					"sid": self.sid,
+					"event_participants": [{"name": row.name, "email": "put-partial@example.com"}],
+				},
+			)
+
+		self.assertEqual(response.status_code, 417)
+		self.assertEqual(response.json["errors"][0]["type"], "MandatoryError")
+
+	def test_v1_put_keeps_rejecting_partial_existing_child_rows(self):
+		row = self.event.event_participants[0]
+		path = f"{self.site_url}/api/resource/Event/{self.event.name}"
+
+		with suppress_stdout():
+			response = self.put(
+				path,
+				{
+					"sid": self.sid,
+					"event_participants": [{"name": row.name, "email": "v1-partial@example.com"}],
+				},
+			)
+
+		self.assertEqual(response.status_code, 417)
+		self.assertEqual(response.json["exc_type"], "MandatoryError")
+
+
 class TestMethodAPIV2(FrappeAPITestCase):
 	version = "v2"
 
