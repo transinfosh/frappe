@@ -393,24 +393,21 @@ class BaseDocument:
 	def _validate_patch_field(self, fieldname):
 		protected_fields = {*default_fields, *child_table_fields, *optional_fields, *RESERVED_KEYWORDS}
 		if fieldname in protected_fields or fieldname.startswith("_"):
-			frappe.throw(_("Field {0} cannot be updated").format(frappe.bold(fieldname)))
+			return None
 
 		df = self.meta.get_field(fieldname)
 		if not df or df.fieldtype in display_fieldtypes:
-			frappe.throw(
-				_("Field {0} does not exist on {1}").format(frappe.bold(fieldname), frappe.bold(self.doctype))
-			)
+			return None
 		if df.read_only or df.fieldtype == "Read Only":
+			return None
+		if df.fieldtype in table_fields and fieldname not in self._non_computed_table_fieldnames:
 			return None
 		if (
 			frappe.session.user != "Administrator"
 			and df.permlevel
 			and not self.has_permlevel_access_to(fieldname, df=df, permission_type="write")
 		):
-			frappe.throw(
-				_("No permission to edit field {0}").format(frappe.bold(fieldname)),
-				frappe.PermissionError,
-			)
+			return None
 
 		return df
 

@@ -416,30 +416,32 @@ class TestPatchDocumentAPIV2(FrappeAPITestCase):
 		self.assertEqual(frappe.db.get_value("Event Participants", row.name, "reference_docname"), "Event")
 		self.assertEqual(frappe.db.get_value("Event Participants", row.name, "email"), "original@example.com")
 
-	def test_patch_rejects_internal_and_unknown_parent_fields(self):
-		for fieldname, value in (
-			("name", "OTHER-NAME"),
-			("owner", "Guest"),
-			("flags", {}),
-			("unknown_internal", "value"),
-		):
-			with self.subTest(fieldname=fieldname), suppress_stdout():
-				response = self.patch_event({fieldname: value})
-
-			self.assertEqual(response.status_code, 417)
-			self.assertEqual(response.json["errors"][0]["type"], "ValidationError")
-
-	def test_patch_ignores_read_only_parent_field(self):
+	def test_patch_ignores_read_only_unknown_and_internal_parent_fields(self):
 		response = self.patch_event(
-			{"google_meet_link": "https://example.com/meeting", "status": "Closed"}
+			{
+				"name": "OTHER-NAME",
+				"owner": "Guest",
+				"doctype": "ToDo",
+				"parent": "OTHER-PARENT",
+				"parentfield": "other_field",
+				"parenttype": "ToDo",
+				"flags": {},
+				"unknown_internal": "value",
+				"google_meet_link": "https://example.com/meeting",
+				"status": "Closed",
+			}
 		)
 
 		self.assertEqual(response.status_code, 200)
+		self.assertEqual(response.json["data"]["name"], self.event.name)
+		self.assertEqual(response.json["data"]["owner"], self.event.owner)
+		self.assertEqual(response.json["data"]["doctype"], "Event")
 		self.assertIsNone(response.json["data"]["google_meet_link"])
 		self.assertEqual(response.json["data"]["status"], "Closed")
+		self.assertFalse(hasattr(frappe.get_doc("Event", self.event.name), "unknown_internal"))
 		self.assertIsNone(frappe.db.get_value("Event", self.event.name, "google_meet_link"))
 
-	def test_patch_ignores_read_only_child_field(self):
+	def test_patch_ignores_read_only_unknown_and_internal_child_fields(self):
 		row = self.event.event_participants[0]
 		email_df = frappe.get_meta("Event Participants").get_field("email")
 
@@ -447,32 +449,32 @@ class TestPatchDocumentAPIV2(FrappeAPITestCase):
 			response = self.patch_event(
 				{
 					"event_participants": [
-						{"name": row.name, "email": "ignored@example.com", "attending": "Yes"}
+						{
+							"name": row.name,
+							"owner": "Guest",
+							"doctype": "ToDo",
+							"parent": "OTHER",
+							"parentfield": "other_field",
+							"parenttype": "ToDo",
+							"unknown_child": "value",
+							"email": "ignored@example.com",
+							"attending": "Yes",
+						}
 					]
 				}
 			)
 
 		self.assertEqual(response.status_code, 200)
-		self.assertEqual(response.json["data"]["event_participants"][0]["email"], "original@example.com")
-		self.assertEqual(response.json["data"]["event_participants"][0]["attending"], "Yes")
-		self.assertEqual(
-			frappe.db.get_value("Event Participants", row.name, "email"), "original@example.com"
-		)
-
-	def test_patch_rejects_internal_child_fields(self):
-		row = self.event.event_participants[0]
-
-		with suppress_stdout():
-			response = self.patch_event(
-				{
-					"event_participants": [
-						{"name": row.name, "parent": "OTHER", "email": "ignored@example.com"}
-					]
-				}
-			)
-
-		self.assertEqual(response.status_code, 417)
-		self.assertIn("cannot be updated", response.json["errors"][0]["message"])
+		patched_row = response.json["data"]["event_participants"][0]
+		self.assertEqual(patched_row["name"], row.name)
+		self.assertEqual(patched_row["owner"], row.owner)
+		self.assertEqual(patched_row["doctype"], "Event Participants")
+		self.assertEqual(patched_row["parent"], self.event.name)
+		self.assertEqual(patched_row["parentfield"], "event_participants")
+		self.assertEqual(patched_row["parenttype"], "Event")
+		self.assertEqual(patched_row["email"], "original@example.com")
+		self.assertEqual(patched_row["attending"], "Yes")
+		self.assertNotIn("unknown_child", patched_row)
 		self.assertEqual(frappe.db.get_value("Event Participants", row.name, "email"), "original@example.com")
 
 	def test_patch_rejects_invalid_child_table_value(self):
