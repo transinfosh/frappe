@@ -341,7 +341,7 @@ class BaseDocument:
 			if not isinstance(value, list):
 				frappe.throw(_("Child table field {0} must be a list").format(frappe.bold(key)))
 
-			existing_rows = {row.name: row for row in self.get(key) if row.name and not row.is_new()}
+			existing_rows = {str(row.name): row for row in self.get(key) if row.name and not row.is_new()}
 			validated_rows = []
 			seen_names = set()
 			for row_data in value:

@@ -261,6 +261,18 @@ class TestPatchDocumentAPIV2(FrappeAPITestCase):
 		self.assertEqual(patched_row["email"], "patched@example.com")
 		self.assertFalse(frappe.db.exists("Event Participants", omitted_row.name))
 
+	def test_patch_matches_existing_numeric_child_row_name(self):
+		row = self.event.event_participants[0]
+		row.name = 123
+
+		self.event.update_from_patch(
+			{"event_participants": [{"name": "123", "email": "patched@example.com"}]}
+		)
+
+		self.assertEqual(len(self.event.event_participants), 1)
+		self.assertIs(self.event.event_participants[0], row)
+		self.assertEqual(row.email, "patched@example.com")
+
 	def test_patch_adds_child_row_without_name(self):
 		response = self.patch_event(
 			{
