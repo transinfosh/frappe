@@ -326,7 +326,11 @@ class BaseDocument:
 
 	def update_from_patch(self, d):
 		"""Partially update fields, merging existing child rows by name."""
-		fields = [(key, value, self._validate_patch_field(key)) for key, value in d.items()]
+		fields = []
+		for key, value in d.items():
+			df = self._validate_patch_field(key)
+			if df:
+				fields.append((key, value, df))
 		for key, value, df in fields:
 			if df.fieldtype not in table_fields:
 				self.set(key, value)
@@ -397,7 +401,7 @@ class BaseDocument:
 				_("Field {0} does not exist on {1}").format(frappe.bold(fieldname), frappe.bold(self.doctype))
 			)
 		if df.read_only or df.fieldtype == "Read Only":
-			frappe.throw(_("Field {0} is read only").format(frappe.bold(fieldname)))
+			return None
 		if (
 			frappe.session.user != "Administrator"
 			and df.permlevel

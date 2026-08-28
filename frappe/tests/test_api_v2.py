@@ -417,12 +417,35 @@ class TestPatchDocumentAPIV2(FrappeAPITestCase):
 			self.assertEqual(response.status_code, 417)
 			self.assertEqual(response.json["errors"][0]["type"], "ValidationError")
 
-	def test_patch_rejects_read_only_field(self):
-		with suppress_stdout():
-			response = self.patch_event({"google_meet_link": "https://example.com/meeting"})
+	def test_patch_ignores_read_only_parent_field(self):
+		response = self.patch_event(
+			{"google_meet_link": "https://example.com/meeting", "status": "Closed"}
+		)
 
-		self.assertEqual(response.status_code, 417)
-		self.assertIn("is read only", response.json["errors"][0]["message"])
+		self.assertEqual(response.status_code, 200)
+		self.assertIsNone(response.json["data"]["google_meet_link"])
+		self.assertEqual(response.json["data"]["status"], "Closed")
+		self.assertIsNone(frappe.db.get_value("Event", self.event.name, "google_meet_link"))
+
+	def test_patch_ignores_read_only_child_field(self):
+		row = self.event.event_participants[0]
+		email_df = frappe.get_meta("Event Participants").get_field("email")
+
+		with patch.object(email_df, "read_only", 1):
+			response = self.patch_event(
+				{
+					"event_participants": [
+						{"name": row.name, "email": "ignored@example.com", "attending": "Yes"}
+					]
+				}
+			)
+
+		self.assertEqual(response.status_code, 200)
+		self.assertEqual(response.json["data"]["event_participants"][0]["email"], "original@example.com")
+		self.assertEqual(response.json["data"]["event_participants"][0]["attending"], "Yes")
+		self.assertEqual(
+			frappe.db.get_value("Event Participants", row.name, "email"), "original@example.com"
+		)
 
 	def test_patch_rejects_internal_child_fields(self):
 		row = self.event.event_participants[0]
