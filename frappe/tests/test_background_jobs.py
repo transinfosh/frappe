@@ -3,7 +3,7 @@ from contextlib import contextmanager
 from unittest.mock import patch
 
 from rq import Queue
-from werkzeug.local import Local
+from werkzeug.local import Local, LocalProxy
 
 import frappe
 from frappe.core.doctype.rq_job.rq_job import remove_failed_jobs
@@ -94,9 +94,45 @@ class TestBackgroundJobs(IntegrationTestCase):
 			self.assertEqual(r, "pong")
 			self.assertLess(_test_JOB_HOOK.get("before_job"), _test_JOB_HOOK.get("after_job"))
 
+	def test_retry_does_not_finalize_destroyed_job(self):
+		global _retry_attempts
+		_retry_attempts = 0
+		self.addCleanup(lambda: _test_JOB_HOOK.clear())
+		with (
+			freeze_local() as locals,
+			frappe.init_site(locals.site),
+			patch("frappe.get_hooks", patch_job_hooks),
+			patch.object(frappe, "job", LocalProxy(frappe.local, "job")),
+			patch("frappe.utils.background_jobs.time.sleep"),
+		):
+			frappe.connect()
+			self.assertEqual(
+				execute_job(
+					site=frappe.local.site,
+					method="frappe.tests.test_background_jobs.retry_once",
+					event=None,
+					job_name="frappe.tests.test_background_jobs.retry_once",
+					is_async=True,
+					kwargs={},
+				),
+				"retried",
+			)
+			self.assertEqual(_test_JOB_HOOK.get("after_job_count"), 1)
+
 
 def fail_function():
 	return 1 / 0
+
+
+_retry_attempts = 0
+
+
+def retry_once():
+	global _retry_attempts
+	_retry_attempts += 1
+	if _retry_attempts == 1:
+		raise frappe.RetryBackgroundJobError
+	return "retried"
 
 
 _test_JOB_HOOK = {}
@@ -108,6 +144,7 @@ def before_job(*args, **kwargs):
 
 def after_job(*args, **kwargs):
 	_test_JOB_HOOK["after_job"] = time.time()
+	_test_JOB_HOOK["after_job_count"] = _test_JOB_HOOK.get("after_job_count", 0) + 1
 
 
 @contextmanager

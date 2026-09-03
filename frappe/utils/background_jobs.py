@@ -309,9 +309,15 @@ def execute_job(site, method, event, job_name, kwargs, user=None, is_async=True,
 		if not hasattr(frappe.local, "site"):
 			frappe.init(site, force=True, is_job=True)
 			frappe.connect()
-		for after_job_task in frappe.get_hooks("after_job"):
-			frappe.call(after_job_task, method=method_name, kwargs=kwargs, result=retval)
-		frappe.local.job.after_job.run()
+		# A retry destroys the current request-local state before recursively
+		# executing the next attempt.  The recursive attempt owns its own
+		# after-job callbacks; the outer attempt therefore has no job left to
+		# finalize.
+		job = getattr(frappe.local, "job", None)
+		if job:
+			for after_job_task in frappe.get_hooks("after_job"):
+				frappe.call(after_job_task, method=method_name, kwargs=kwargs, result=retval)
+			job.after_job.run()
 
 		if is_async:
 			frappe.destroy()
