@@ -95,13 +95,6 @@ def get_dom_id(seed=None):
 	return "id-" + generate_hash(12)
 
 
-def get_qr_svg_code(value):
-	"""Return a base64-encoded SVG QR code for use in Jinja templates."""
-	from frappe.twofactor import get_qr_svg_code as generate_qr_svg_code
-
-	return generate_qr_svg_code(str(value or "")).decode()
-
-
 def include_script(path, preload=True):
 	"""Get path of bundled script files.
 
