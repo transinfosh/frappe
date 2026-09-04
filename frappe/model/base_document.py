@@ -398,7 +398,7 @@ class BaseDocument:
 		df = self.meta.get_field(fieldname)
 		if not df or df.fieldtype in display_fieldtypes:
 			return None
-		if df.read_only or df.fieldtype == "Read Only":
+		if df.set_only_once and not self.is_new():
 			return None
 		if df.fieldtype in table_fields and fieldname not in self._non_computed_table_fieldnames:
 			return None

@@ -416,7 +416,7 @@ class TestPatchDocumentAPIV2(FrappeAPITestCase):
 		self.assertEqual(frappe.db.get_value("Event Participants", row.name, "reference_docname"), "Event")
 		self.assertEqual(frappe.db.get_value("Event Participants", row.name, "email"), "original@example.com")
 
-	def test_patch_ignores_read_only_unknown_and_internal_parent_fields(self):
+	def test_patch_updates_read_only_and_ignores_unknown_and_internal_parent_fields(self):
 		response = self.patch_event(
 			{
 				"name": "OTHER-NAME",
@@ -436,12 +436,14 @@ class TestPatchDocumentAPIV2(FrappeAPITestCase):
 		self.assertEqual(response.json["data"]["name"], self.event.name)
 		self.assertEqual(response.json["data"]["owner"], self.event.owner)
 		self.assertEqual(response.json["data"]["doctype"], "Event")
-		self.assertIsNone(response.json["data"]["google_meet_link"])
+		self.assertEqual(response.json["data"]["google_meet_link"], "https://example.com/meeting")
 		self.assertEqual(response.json["data"]["status"], "Closed")
 		self.assertFalse(hasattr(frappe.get_doc("Event", self.event.name), "unknown_internal"))
-		self.assertIsNone(frappe.db.get_value("Event", self.event.name, "google_meet_link"))
+		self.assertEqual(
+			frappe.db.get_value("Event", self.event.name, "google_meet_link"), "https://example.com/meeting"
+		)
 
-	def test_patch_ignores_read_only_unknown_and_internal_child_fields(self):
+	def test_patch_updates_read_only_and_ignores_unknown_and_internal_child_fields(self):
 		row = self.event.event_participants[0]
 		email_df = frappe.get_meta("Event Participants").get_field("email")
 
@@ -472,9 +474,35 @@ class TestPatchDocumentAPIV2(FrappeAPITestCase):
 		self.assertEqual(patched_row["parent"], self.event.name)
 		self.assertEqual(patched_row["parentfield"], "event_participants")
 		self.assertEqual(patched_row["parenttype"], "Event")
-		self.assertEqual(patched_row["email"], "original@example.com")
+		self.assertEqual(patched_row["email"], "ignored@example.com")
 		self.assertEqual(patched_row["attending"], "Yes")
 		self.assertNotIn("unknown_child", patched_row)
+		self.assertEqual(frappe.db.get_value("Event Participants", row.name, "email"), "ignored@example.com")
+
+	def test_patch_ignores_set_only_once_parent_field(self):
+		status_df = frappe.get_meta("Event").get_field("status")
+
+		with patch.object(status_df, "set_only_once", 1):
+			response = self.patch_event({"status": "Closed", "subject": "Updated subject"})
+
+		self.assertEqual(response.status_code, 200)
+		self.assertEqual(response.json["data"]["status"], "Open")
+		self.assertEqual(response.json["data"]["subject"], "Updated subject")
+		self.assertEqual(frappe.db.get_value("Event", self.event.name, "status"), "Open")
+
+	def test_patch_ignores_set_only_once_child_field(self):
+		row = self.event.event_participants[0]
+		email_df = frappe.get_meta("Event Participants").get_field("email")
+
+		with patch.object(email_df, "set_only_once", 1):
+			response = self.patch_event(
+				{"event_participants": [{"name": row.name, "email": "ignored@example.com", "attending": "Yes"}]}
+			)
+
+		self.assertEqual(response.status_code, 200)
+		patched_row = response.json["data"]["event_participants"][0]
+		self.assertEqual(patched_row["email"], "original@example.com")
+		self.assertEqual(patched_row["attending"], "Yes")
 		self.assertEqual(frappe.db.get_value("Event Participants", row.name, "email"), "original@example.com")
 
 	def test_patch_rejects_invalid_child_table_value(self):
