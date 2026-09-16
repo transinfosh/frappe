@@ -2,7 +2,7 @@
 # License: MIT. See LICENSE
 
 import json
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import frappe
 from frappe.integrations import google_oauth
@@ -18,6 +18,24 @@ def _fake_domain_callback(code=None, **kwargs):
 
 
 class TestGoogleOAuth(IntegrationTestCase):
+	def test_service_credentials_refresh_with_google_auth(self):
+		settings = Mock(client_id="fixture-client")
+		settings.get_password.return_value = "fixture-secret"
+		with patch.object(frappe, "get_single", return_value=settings), patch.object(google_oauth, "build") as build:
+			oauth = google_oauth.GoogleOAuth("contacts", validate=False)
+			oauth.get_google_service_object("old-token", "fixture-refresh")
+		credentials = build.call_args.kwargs["credentials"]
+		request = Mock(return_value=Mock(status=200, data=json.dumps({
+			"access_token": "new-token", "expires_in": 3600, "token_type": "Bearer",
+		}).encode()))
+		credentials.refresh(request)
+		headers = {}
+		credentials.apply(headers)
+		self.assertTrue(credentials.valid)
+		self.assertEqual(headers["authorization"], "Bearer new-token")
+		self.assertEqual(request.call_args.kwargs["url"], google_oauth.GoogleOAuth.OAUTH_URL)
+		self.assertIn(b"grant_type=refresh_token", request.call_args.kwargs["body"])
+
 	def test_callback_uses_server_side_state(self):
 		frappe.local.response = frappe._dict()
 		state_token = create_google_oauth_state({"redirect": "/app/todo", "failure_query_param": "failed=1"})
