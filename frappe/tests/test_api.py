@@ -111,6 +111,7 @@ class FrappeAPITestCase(IntegrationTestCase):
 		from frappe.utils import set_request
 
 		set_request(path="/")
+		frappe.local.form_dict = frappe._dict()
 		frappe.local.cookie_manager = CookieManager()
 		frappe.local.login_manager = LoginManager()
 		frappe.local.login_manager.login_as("Administrator")
