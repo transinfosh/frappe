@@ -38,7 +38,7 @@ context("Awesome Bar", () => {
 		cy.wait(100); // Wait a bit before hitting enter.
 		cy.get("@awesome_bar").closest(".awesomplete").findByRole("listbox").should("be.visible");
 		cy.get("@awesome_bar").type("{enter}");
-		cy.get(".page-head .doctype-title").should("have.text", "ToDo");
+		cy.get(".page-head .doctype-title:visible").should("have.text", "ToDo");
 		cy.location("pathname").should("eq", "/desk/todo");
 	});
 
@@ -69,7 +69,7 @@ context("Awesome Bar", () => {
 		cy.get("@awesome_bar").type("web page");
 		cy.wait(150); // Wait a bit before hitting enter.
 		cy.get("@awesome_bar").type("{enter}");
-		cy.get(".page-head .doctype-title").should("have.text", "Web Page");
+		cy.get(".page-head .doctype-title:visible").should("have.text", "Web Page");
 		cy.wait(200); // Wait a bit longer before checking the filter.
 		cy.location("search").should("be.empty");
 	});

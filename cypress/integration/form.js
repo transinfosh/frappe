@@ -52,7 +52,7 @@ context("Form", () => {
 
 		cy.go_to_list("ToDo");
 		cy.clear_filters();
-		cy.get(".page-head .doctype-title").should("have.text", "ToDo");
+		cy.get(".page-head .doctype-title:visible").should("have.text", "ToDo");
 		cy.get(".list-row").should("contain", "this is a test todo");
 	});
 

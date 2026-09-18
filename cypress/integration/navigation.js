@@ -23,7 +23,7 @@ context("Navigation", () => {
 
 	it("Navigate to previous page after login", () => {
 		cy.visit("/desk/todo");
-		cy.get(".page-head .doctype-title").should("have.text", "ToDo").and("be.visible");
+		cy.get(".page-head .doctype-title:visible").should("have.text", "ToDo").and("be.visible");
 		cy.clear_filters();
 		cy.call("logout");
 		cy.reload();
