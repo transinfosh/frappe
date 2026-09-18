@@ -48,11 +48,11 @@ context("Form", () => {
 		}).as("form_save");
 		cy.get(".primary-action").click();
 		cy.wait("@form_save").its("response.statusCode").should("eq", 200);
-		cy.title().should("eq", "this is a test todo · To Do");
+		cy.title().should("eq", "this is a test todo · ToDo");
 
 		cy.go_to_list("ToDo");
 		cy.clear_filters();
-		cy.get(".page-head").findByTitle("To Do").should("exist");
+		cy.get(".page-head .doctype-title").should("have.text", "ToDo");
 		cy.get(".list-row").should("contain", "this is a test todo");
 	});
 
@@ -136,7 +136,7 @@ context("Form", () => {
 				cy.get("@table-form")
 					.find('.frappe-control[data-fieldname="is_primary_phone"]')
 					.should("be.hidden");
-				cy.get("@table-form").find(".grid-footer-toolbar").click();
+				cy.get("@table-form").find(".grid-collapse-row").click();
 
 				// set property on form_render event of child table
 				cy.get("@table").find('[data-idx="1"] .btn-open-row').click();
@@ -158,7 +158,7 @@ context("Form", () => {
 				cy.get("@table-form")
 					.find('.frappe-control[data-fieldname="is_primary_phone"]')
 					.should("be.visible");
-				cy.get("@table-form").find(".grid-footer-toolbar").click();
+				cy.get("@table-form").find(".grid-collapse-row").click();
 			});
 	});
 });

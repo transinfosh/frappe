@@ -29,14 +29,14 @@ context("Grid", () => {
 				cy.get("@table-form")
 					.find('.frappe-control[data-fieldname="is_primary_phone"]')
 					.should("be.hidden");
-				cy.get("@table-form").find(".grid-footer-toolbar").click();
+				cy.get("@table-form").find(".grid-collapse-row").click();
 
 				cy.get("@table").find('[data-idx="2"] .btn-open-row').click();
 				cy.get(".grid-row-open").as("table-form");
 				cy.get("@table-form")
 					.find('.frappe-control[data-fieldname="is_primary_phone"]')
 					.should("be.hidden");
-				cy.get("@table-form").find(".grid-footer-toolbar").click();
+				cy.get("@table-form").find(".grid-collapse-row").click();
 			});
 	});
 	it("update docfield property using toggle_display", () => {
@@ -53,14 +53,14 @@ context("Grid", () => {
 				cy.get("@table-form")
 					.find('.frappe-control[data-fieldname="is_primary_mobile_no"]')
 					.should("be.hidden");
-				cy.get("@table-form").find(".grid-footer-toolbar").click();
+				cy.get("@table-form").find(".grid-collapse-row").click();
 
 				cy.get("@table").find('[data-idx="2"] .btn-open-row').click();
 				cy.get(".grid-row-open").as("table-form");
 				cy.get("@table-form")
 					.find('.frappe-control[data-fieldname="is_primary_mobile_no"]')
 					.should("be.hidden");
-				cy.get("@table-form").find(".grid-footer-toolbar").click();
+				cy.get("@table-form").find(".grid-collapse-row").click();
 			});
 	});
 	it("update docfield property using toggle_enable", () => {
@@ -77,14 +77,14 @@ context("Grid", () => {
 				cy.get("@table-form")
 					.find('.frappe-control[data-fieldname="phone"] .control-value')
 					.should("have.class", "like-disabled-input");
-				cy.get("@table-form").find(".grid-footer-toolbar").click();
+				cy.get("@table-form").find(".grid-collapse-row").click();
 
 				cy.get("@table").find('[data-idx="2"] .btn-open-row').click();
 				cy.get(".grid-row-open").as("table-form");
 				cy.get("@table-form")
 					.find('.frappe-control[data-fieldname="phone"] .control-value')
 					.should("have.class", "like-disabled-input");
-				cy.get("@table-form").find(".grid-footer-toolbar").click();
+				cy.get("@table-form").find(".grid-collapse-row").click();
 			});
 	});
 	it("update docfield property using toggle_reqd", () => {
@@ -101,14 +101,14 @@ context("Grid", () => {
 				cy.get_field("phone").as("phone-field");
 				cy.get("@phone-field").focus().clear().wait(500).blur();
 				cy.get("@phone-field").should("not.have.class", "has-error");
-				cy.get("@table-form").find(".grid-footer-toolbar").click();
+				cy.get("@table-form").find(".grid-collapse-row").click();
 
 				cy.get("@table").find('[data-idx="2"] .btn-open-row').click();
 				cy.get(".grid-row-open").as("table-form");
 				cy.get_field("phone").as("phone-field");
 				cy.get("@phone-field").focus().clear().wait(500).blur();
 				cy.get("@phone-field").should("not.have.class", "has-error");
-				cy.get("@table-form").find(".grid-footer-toolbar").click();
+				cy.get("@table-form").find(".grid-collapse-row").click();
 			});
 	});
 

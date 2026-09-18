@@ -10,12 +10,12 @@ context("Kanban Board", () => {
 		cy.get(".page-actions .custom-btn-group button").click();
 		cy.get(".page-actions .custom-btn-group ul.dropdown-menu li").contains("Kanban").click();
 
-		cy.focused().blur();
+		cy.get('.modal:visible [data-fieldname="board_name"] input').should("be.visible").focus().blur();
 		cy.fill_field("board_name", "ToDo Kanban", "Data");
 		cy.fill_field("field_name", "Status", "Select");
 		cy.click_modal_primary_button("Save");
 
-		cy.get(".title-text").should("contain", "ToDo Kanban");
+		cy.location("pathname").should("eq", "/desk/todo/view/kanban/ToDo Kanban");
 	});
 
 	it("Create ToDo from kanban", () => {

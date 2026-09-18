@@ -7,6 +7,8 @@ on:
       - develop
     paths:
       - "frappe/**"
+      - "cypress/**"
+      - "cypress.config.js"
       - "pyproject.toml"
       - "package.json"
       - "yarn.lock"

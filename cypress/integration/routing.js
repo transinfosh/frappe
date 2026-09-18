@@ -25,7 +25,7 @@ describe("SPA Routing", { scrollBehavior: false }, () => {
 		test_queries.forEach((query) => {
 			const full_url = `${list_view}${query}`;
 			cy.visit(full_url);
-			cy.findByTitle("To Do").should("exist");
+			cy.get(".page-head .doctype-title").should("have.text", "ToDo");
 
 			const expected = new URLSearchParams(query);
 			cy.location().then((loc) => {

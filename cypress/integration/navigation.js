@@ -16,14 +16,14 @@ context("Navigation", () => {
 			true
 		);
 		cy.visit(`/desk/client-script/${encodeURIComponent("ABC#123")}`);
-		cy.title().should("eq", "ABC#123");
+		cy.title().should("eq", "ABC#123 · Client Script");
 		cy.go("back");
 		cy.title().should("eq", "Website");
 	});
 
 	it("Navigate to previous page after login", () => {
 		cy.visit("/desk/todo");
-		cy.get(".page-head").findByTitle("To Do").should("be.visible");
+		cy.get(".page-head .doctype-title").should("have.text", "ToDo").and("be.visible");
 		cy.clear_filters();
 		cy.call("logout");
 		cy.reload();

@@ -91,7 +91,7 @@ context("Control Phone", () => {
 		cy.go_to_list("Doctype With Phone");
 		cy.clear_cache();
 		cy.click_listview_row_item(0);
-		cy.title().should("eq", "Test Phone 1");
+		cy.title().should("eq", "Test Phone 1 · Doctype With Phone");
 		cy.get(".selected-phone .country").should("have.text", "+91");
 		cy.get(".selected-phone > img").should("have.attr", "src").and("include", "/in.svg");
 		cy.get_field("phone").should("have.value", "9823341234");
