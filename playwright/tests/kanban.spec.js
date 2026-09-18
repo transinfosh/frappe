@@ -110,6 +110,9 @@ test.describe("Kanban Board", () => {
 		if (r.message?.name) {
 			await visit_todo_kanban(page, desk);
 			await expect(page.locator(TITLE)).toContainText("ToDo Kanban");
+			await expect(page).toHaveURL(
+				(url) => decodeURIComponent(url.pathname) === TODO_KANBAN_URL
+			);
 			return;
 		}
 
@@ -120,11 +123,17 @@ test.describe("Kanban Board", () => {
 		await menu_item(page, "Kanban View").hover();
 		await menu_item(page, "Create Board").click();
 
-		await expect(page.locator(".modal-dialog:visible")).toBeAttached();
+		const board_name = page.locator('.modal:visible [data-fieldname="board_name"] input');
+		await expect(board_name).toBeVisible();
+		await board_name.focus();
+		await board_name.blur();
 		await desk.fill_field("board_name", "ToDo Kanban", "Data");
 		await desk.fill_field("field_name", "Status", "Select");
 		await desk.click_modal_primary_button("Save");
 
+		await expect(page).toHaveURL(
+			(url) => decodeURIComponent(url.pathname) === TODO_KANBAN_URL
+		);
 		await expect(page.locator(TITLE)).toContainText("ToDo Kanban");
 	});
 

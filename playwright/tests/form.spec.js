@@ -38,7 +38,9 @@ test.describe("Form", () => {
 
 		await desk.go_to_list("ToDo");
 		await desk.clear_filters();
-		await expect(page.locator(".page-head:visible").getByTitle("To Do")).toBeAttached();
+		await expect(page.locator(".navbar-breadcrumbs:visible li:last-child")).toHaveText(
+			"To Do"
+		);
 		await expect(
 			page.locator(".list-row", { hasText: "this is a test todo" }).first()
 		).toBeVisible();
@@ -125,11 +127,11 @@ test.describe("Form", () => {
 		await set_hidden(1);
 		await table.locator('[data-idx="1"] .btn-open-row').click();
 		await expect(is_primary_phone).toBeHidden();
-		await table_form.locator(".grid-footer-toolbar").click();
+		await table_form.locator(".grid-collapse-row").click();
 
 		await table.locator('[data-idx="1"] .btn-open-row').click();
 		await set_hidden(0);
 		await expect(is_primary_phone).toBeVisible();
-		await table_form.locator(".grid-footer-toolbar").click();
+		await table_form.locator(".grid-collapse-row").click();
 	});
 });

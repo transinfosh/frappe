@@ -19,7 +19,9 @@ test.describe("SPA Routing", () => {
 	test("should apply filter on list view from route", async ({ page }) => {
 		for (const query of test_queries) {
 			await page.goto(`${list_view}${query}`);
-			await expect(page.getByTitle("To Do", { exact: true }).first()).toBeAttached();
+			await expect(page.locator(".navbar-breadcrumbs:visible li:last-child")).toHaveText(
+				"To Do"
+			);
 
 			// A round trip: URL with params -> parsed filters -> new URL.
 			const expected = new URLSearchParams(query);

@@ -17,16 +17,16 @@ test.describe("Navigation", () => {
 			true
 		);
 		await page.goto(`/desk/client-script/${encodeURIComponent("ABC#123")}`);
-		await expect(page).toHaveTitle("ABC#123");
+		await expect(page).toHaveTitle("ABC#123 · Client Script");
 		await page.goBack();
 		await expect(page).toHaveTitle("Website");
 	});
 
 	test("Navigate to previous page after login", async ({ page, desk }) => {
 		await page.goto("/desk/todo");
-		await expect(
-			page.locator(".page-head").getByTitle("To Do", { exact: true })
-		).toBeVisible();
+		const title = page.locator(".navbar-breadcrumbs:visible li:last-child");
+		await expect(title).toHaveText("To Do");
+		await expect(title).toBeVisible();
 		await desk.clear_filters();
 		await desk.logout();
 		await page.reload();
