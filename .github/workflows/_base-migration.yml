@@ -78,6 +78,9 @@ jobs:
                 ref="${{ github.sha }}"
             else
                 ref="version-$version-hotfix"
+                if [[ "$version" == "16" ]]; then
+                    ref="version-16"
+                fi
             fi
 
             echo "Updating to $ref"
