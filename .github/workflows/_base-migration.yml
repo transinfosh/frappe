@@ -84,6 +84,10 @@ jobs:
             else
                 base_ref="version-$version-hotfix"
                 head_ref="version-$version-hotfix"
+                if [[ "$version" == "16" ]]; then
+                    base_ref="version-16"
+                    head_ref="version-16"
+                fi
             fi
 
             source ${GITHUB_WORKSPACE}/env/bin/activate
