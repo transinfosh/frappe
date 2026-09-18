@@ -58,6 +58,11 @@ jobs:
           ${{ inputs.python-version }}
           
 
+    - uses: astral-sh/setup-uv@v6
+
+    - name: Install isolated Bench CLI
+      run: uv tool install frappe-bench
+
     - name: Execute pre-migration tasks
       if: inputs.pre
       run: |
@@ -121,7 +126,11 @@ jobs:
             if rm -rf ${GITHUB_WORKSPACE}/env && python"$2" -m venv ${GITHUB_WORKSPACE}/env; then
                 source ${GITHUB_WORKSPACE}/env/bin/activate
                 pip install --quiet --upgrade pip
-                pip install --quiet frappe-bench
+                # Keep Bench dependencies separate from historical Frappe dependencies.
+                pip install --quiet honcho
+                if [[ "$version" == "15" ]]; then
+                    pip install --quiet "setuptools<82"
+                fi
                 echo "Environment setup completed."
             else
                 echo "Environment setup failed." >&2
