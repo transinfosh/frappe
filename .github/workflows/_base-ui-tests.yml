@@ -119,9 +119,24 @@ jobs:
       - name: Stop server and wait for coverage file
         if: inputs.enable-coverage
         run: |
-          ps -ef | grep "[f]rappe serve" | awk '{print $2}' | xargs kill -s SIGINT
-          sleep 5
-          ( tail -f ${GITHUB_WORKSPACE}/sites/*-coverage*.xml & ) | grep -q "\/coverage"
+          ps -ef | grep "[f]rappe serve" | awk '{print $2}' | xargs --no-run-if-empty kill -s SIGINT
+          python - <<'PY'
+          import sys
+          import time
+          from pathlib import Path
+          from xml.etree import ElementTree
+
+          for _ in range(60):
+              for report in Path("sites").glob("*coverage*.xml"):
+                  try:
+                      root = ElementTree.parse(report).getroot()
+                  except (OSError, ElementTree.ParseError):
+                      continue
+                  if root.tag == "coverage":
+                      sys.exit(0)
+              time.sleep(1)
+          sys.exit("Coverage report was not written within 60 seconds")
+          PY
 
       - name: Upload JS coverage data
         uses: actions/upload-artifact@v6
@@ -149,7 +164,7 @@ jobs:
         if: inputs.enable-coverage
         with:
           name: coverage-py-${{ matrix.index }}
-          path: ./sites/*-coverage*.xml
+          path: ./sites/*coverage*.xml
 
       - name: Setup tmate session
         uses: mxschmitt/action-tmate@v3

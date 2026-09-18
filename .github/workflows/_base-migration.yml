@@ -55,7 +55,6 @@ jobs:
       with:
         python-version: |
           3.11
-          3.13
           ${{ inputs.python-version }}
           
 
@@ -103,7 +102,7 @@ jobs:
     - name: Update to v15
       run: |
         source $RUNNER_TEMP/migrate
-        update_to_version 15 3.13
+        update_to_version 15 3.11
         exit $?
 
     - name: Update to v16
