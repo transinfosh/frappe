@@ -837,10 +837,10 @@ class TestLazyDocument(IntegrationTestCase):
 			compare_signatures(original_class, lazy_class, method)
 
 	def test_append_applies_requested_defaults(self):
-		from frappe.model.base_document import BaseDocument
+		from frappe.model.document import Document
 
 		guest = frappe.get_lazy_doc("User", "Guest")
-		with patch.object(BaseDocument, "_set_defaults", autospec=True) as set_defaults:
+		with patch.object(Document, "_set_defaults", autospec=True) as set_defaults:
 			row = guest.append("roles", {}, set_defaults=True)
 		set_defaults.assert_called_once_with(row)
 
