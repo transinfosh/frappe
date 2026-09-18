@@ -100,7 +100,8 @@ jobs:
           python-version: ${{ inputs.python-version }}
           node-version: ${{ inputs.node-version }}
           disable-socketio: true
-          enable-coverage: ${{ inputs.enable-coverage }}
+          # Server tests collect their own coverage; HTTP callbacks need threading.
+          enable-coverage: false
           db-root-password: ${{ env.DB_ROOT_PASSWORD }}
           db: ${{ matrix.db }}
         env:
@@ -118,7 +119,7 @@ jobs:
           # Process warnings and create annotations
           if [ -s stderr.log ] && [ "$DB" == "mariadb" ]; then
             echo "Processing deprecation warnings..."
-            grep -E "DeprecationWarning" stderr.log | sort -u | while read -r warning; do
+            awk '/DeprecationWarning/' stderr.log | sort -u | while read -r warning; do
               # Extract file path, line number, and warning type
               file_info=$(echo "$warning" | grep -oP '^.*?:\d+:')
               file_path=$(echo "$file_info" | cut -d':' -f1)

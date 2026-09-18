@@ -99,16 +99,16 @@ jobs:
                 echo "Processing app: $app_name"
 
                 if [[ "$app_name" == "${{ github.event.repository.name }}" ]]; then
-                  git -C "$app" fetch --depth 1 origin $head_ref:$head_ref
-                  if git -C "$app" checkout --quiet --force $head_ref; then
+                  git -C "$app" fetch --depth 1 origin "$head_ref"
+                  if git -C "$app" checkout --quiet --force FETCH_HEAD; then
                       echo "Checked out $head_ref successfully at $app"
                   else
                       echo "Failed to checkout $ref at $app" >&2
                       return 1
                   fi
                 else
-                  git -C "$app" fetch --depth 1 origin $base_ref:$base_ref
-                    if git -C "$app" checkout --quiet --force $base_ref; then
+                  git -C "$app" fetch --depth 1 origin "$base_ref"
+                    if git -C "$app" checkout --quiet --force FETCH_HEAD; then
                         echo "Checked out $base_ref successfully at $app"
                     else
                         echo "Failed to checkout $base_ref at $app" >&2
