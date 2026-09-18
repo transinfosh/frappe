@@ -200,6 +200,7 @@ class TestPatchDocumentAPIV2(FrappeAPITestCase):
 		frappe.db.commit()
 
 	def tearDown(self):
+		frappe.db.rollback()
 		for name in self.events_to_delete:
 			frappe.delete_doc_if_exists("Event", name, force=True)
 		for name in self.child_rows_to_delete:
@@ -208,7 +209,10 @@ class TestPatchDocumentAPIV2(FrappeAPITestCase):
 		super().tearDown()
 
 	def patch_event(self, data):
-		return self.patch(self.resource("Event", self.event.name), {"sid": self.sid, **data})
+		response = self.patch(self.resource("Event", self.event.name), {"sid": self.sid, **data})
+		# HTTP writes use a separate connection; refresh the test transaction snapshot.
+		frappe.db.rollback()
+		return response
 
 	def test_patch_updates_only_provided_parent_field(self):
 		response = self.patch_event({"status": "Closed"})
@@ -445,7 +449,7 @@ class TestPatchDocumentAPIV2(FrappeAPITestCase):
 		self.assertEqual(response.json["data"]["doctype"], "Event")
 		self.assertEqual(response.json["data"]["google_meet_link"], "https://example.com/meeting")
 		self.assertEqual(response.json["data"]["status"], "Closed")
-		self.assertFalse(hasattr(frappe.get_doc("Event", self.event.name), "unknown_internal"))
+		self.assertNotIn("unknown_internal", frappe.get_doc("Event", self.event.name).__dict__)
 		self.assertEqual(
 			frappe.db.get_value("Event", self.event.name, "google_meet_link"), "https://example.com/meeting"
 		)
