@@ -5,6 +5,17 @@ on:
     branches:
       - version-16
       - develop
+    paths:
+      - "frappe/**"
+      - "pyproject.toml"
+      - "package.json"
+      - "yarn.lock"
+      - ".github/actions/setup/**"
+      - ".github/helper/**"
+      - ".github/workflows/server-tests.yml"
+      - ".github/workflows/_base-server-tests.yml"
+      - ".github/workflows/_base-type-check.yml"
+      - ".github/workflows/_base-migration.yml"
 
 concurrency:
   group: server-${{ github.event_name }}-${{ github.event.number }}-${{ github.ref }}
@@ -64,7 +75,7 @@ jobs:
     name: Coverage Wrap Up
     needs: [test, checkrun]
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' }}
+    if: ${{ github.event_name != 'pull_request' && github.repository == 'frappe/frappe' }}
     steps:
       - name: Clone
         uses: actions/checkout@v6
