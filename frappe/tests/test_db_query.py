@@ -23,6 +23,20 @@ EXTRA_TEST_RECORD_DEPENDENCIES = ["User"]
 
 
 @contextmanager
+def restricted_doctype_permissions():
+	"""Keep permission-denial tests independent of the fork's All/read grant."""
+	meta = frappe.get_meta("DocType")
+	permissions = [permission for permission in meta.permissions if permission.role != "All"]
+	original_cache = frappe.local.role_permissions
+	frappe.local.role_permissions = {}
+	try:
+		with patch.object(meta, "permissions", permissions):
+			yield
+	finally:
+		frappe.local.role_permissions = original_cache
+
+
+@contextmanager
 def setup_test_user(set_user=False):
 	test_user = frappe.get_doc("User", "test@example.com")
 	user_roles = frappe.get_roles()
@@ -416,6 +430,7 @@ class TestDBQuery(IntegrationTestCase):
 		cond = get_between_date_filter([start, end], datetime_df)
 		self.assertQueryEqual(cond, f"'{start}.000000' AND '{end}.000000'")
 
+	@restricted_doctype_permissions()
 	def test_ignore_permissions_for_get_filters_cond(self):
 		frappe.set_user("test2@example.com")
 		self.assertRaises(frappe.PermissionError, get_filters_cond, "DocType", dict(istable=1), [])

@@ -2214,12 +2214,14 @@ class LazyDocument:
 		return super().get(key, filters, limit, default)
 
 	@override
-	def append(self, key: str, value: D | dict | None = None, position: int = -1) -> D:
+	def append(
+		self, key: str, value: D | dict | None = None, position: int = -1, set_defaults: bool = False
+	) -> D:
 		# Ensure that table descriptor is triggered at least once
 		# key is assumed to be a table fieldname (as expected by BaseDocument.append)
 		if key not in self.__dict__:
 			getattr(self, key, None)
-		return super().append(key, value, position)
+		return super().append(key, value, position, set_defaults=set_defaults)
 
 	@override
 	def db_update_all(self):

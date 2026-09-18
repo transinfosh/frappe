@@ -39,7 +39,8 @@ class TestReport(IntegrationTestCase):
 		report = frappe.get_doc("Report", "Permitted Documents For User")
 		columns, data = report.get_data(filters={"user": "Administrator", "doctype": "DocType"})
 		self.assertEqual(columns[0].get("label"), "Name")
-		self.assertEqual(columns[1].get("label"), "Module")
+		self.assertEqual(columns[1].get("label"), "Title")
+		self.assertEqual(columns[2].get("label"), "Module")
 		self.assertTrue("User" in [d.get("name") for d in data])
 
 	def test_save_or_delete_report(self):

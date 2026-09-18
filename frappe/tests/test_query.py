@@ -10,6 +10,7 @@ from frappe.tests.classes.context_managers import enable_safe_exec
 from frappe.tests.test_db_query import (
 	create_nested_doctype,
 	create_nested_doctype_records,
+	restricted_doctype_permissions,
 	setup_patched_blog_post,
 	setup_test_user,
 )
@@ -956,6 +957,7 @@ class TestQuery(IntegrationTestCase):
 		clear_user_permissions_for_doctype("Test Blog Post", "test2@example.com")
 		test2user.remove_roles("Blogger")
 
+	@restricted_doctype_permissions()
 	def test_ignore_permissions_for_query(self):
 		frappe.set_user("test2@example.com")
 
@@ -2594,6 +2596,7 @@ class TestQuery(IntegrationTestCase):
 		).run()
 		self.assertEqual(len(result), 2, "User should see all posts without restrictions")
 
+	@restricted_doctype_permissions()
 	def test_child_table_permission_uses_parent_doctype(self):
 		"""Test that child table queries use parent doctype for permission checks."""
 		# DocField is a child table of DocType
