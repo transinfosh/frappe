@@ -140,6 +140,7 @@ runs:
       # Install dev/test dependencies
       start_time=$(date +%s)
       bench setup requirements --dev
+      uv pip install --python "${GITHUB_WORKSPACE}/env/bin/python" -e "${GITHUB_WORKSPACE}/apps/frappe[test]"
       if [ "${{ inputs.build-assets }}" == "true" ]; then
         bench setup requirements --node
       fi

@@ -92,6 +92,11 @@ jobs:
 
             bench migrate-env "python$python_version"
 
+            if [[ "$version" == "15" ]]; then
+                # Legacy Google API dependencies still import pkg_resources.
+                uv pip install --python "${GITHUB_WORKSPACE}/env/bin/python" "setuptools<82"
+            fi
+
             bench setup requirements
             bench start &>> ${GITHUB_WORKSPACE}/bench_start.log &
             bench --site test_site migrate
