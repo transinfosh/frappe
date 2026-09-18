@@ -316,7 +316,7 @@ class Document(BaseDocument):
 				val = self.get(f_name)
 				if val is not None and isinstance(val, (dict, list)):
 					self.set(f_name, json.dumps(val, separators=(",", ":")))
-				else:
+				elif not isinstance(val, str):
 					self.set(f_name, None)
 
 		self.load_children_from_db()
@@ -394,7 +394,7 @@ class Document(BaseDocument):
 							val = child.get(f_name)
 							if val is not None and isinstance(val, (dict, list)):
 								child[f_name] = json.dumps(val, separators=(",", ":"))
-							else:
+							elif not isinstance(val, str):
 								child[f_name] = None
 
 			self.set(fieldname, children)

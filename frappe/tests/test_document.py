@@ -30,6 +30,39 @@ class CustomNoteWithoutProperty(Note):
 
 
 class TestDocument(IntegrationTestCase):
+	def test_loading_serialized_json_preserves_parent_and_child_values(self):
+		import json
+
+		child = new_doctype(istable=1, fields=[{"fieldname": "payload", "fieldtype": "JSON"}]).insert()
+		parent = new_doctype(
+			fields=[
+				{"fieldname": "payload", "fieldtype": "JSON"},
+				{"fieldname": "rows", "fieldtype": "Table", "options": child.name},
+			]
+		).insert()
+		doc = frappe.get_doc(
+			{"doctype": parent.name, "payload": {"hello": "world"}, "rows": [{"payload": [1, 2]}]}
+		).insert()
+		original_sql = frappe.db.sql
+
+		def serialized_json_sql(*args, **kwargs):
+			rows = original_sql(*args, **kwargs)
+			if kwargs.get("as_dict"):
+				for row in rows:
+					if isinstance(row.get("payload"), (dict, list)):
+						row["payload"] = json.dumps(row["payload"])
+			return rows
+
+		# MariaDB returns JSON strings; PostgreSQL returns dict/list values.
+		with patch.object(frappe.db, "sql", side_effect=serialized_json_sql):
+			loaded = frappe.get_doc(parent.name, doc.name)
+		self.assertEqual(json.loads(loaded.payload), {"hello": "world"})
+		self.assertEqual(json.loads(loaded.rows[0].payload), [1, 2])
+		loaded.save()
+		loaded.reload()
+		self.assertEqual(json.loads(loaded.payload), {"hello": "world"})
+		self.assertEqual(json.loads(loaded.rows[0].payload), [1, 2])
+
 	def test_get_return_empty_list_for_table_field_if_none(self):
 		d = frappe.get_doc({"doctype": "User"})
 		self.assertEqual(d.get("roles"), [])
@@ -802,6 +835,14 @@ class TestLazyDocument(IntegrationTestCase):
 
 		for method in ("append", "extend", "db_update_all", "get"):
 			compare_signatures(original_class, lazy_class, method)
+
+	def test_append_applies_requested_defaults(self):
+		from frappe.model.base_document import BaseDocument
+
+		guest = frappe.get_lazy_doc("User", "Guest")
+		with patch.object(BaseDocument, "_set_defaults", autospec=True) as set_defaults:
+			row = guest.append("roles", {}, set_defaults=True)
+		set_defaults.assert_called_once_with(row)
 
 	def test_append_extend_update(self):
 		guest = frappe.get_lazy_doc("User", "Guest")
