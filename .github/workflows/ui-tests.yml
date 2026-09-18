@@ -1,16 +1,13 @@
 name: UI
 
 on:
-  pull_request:
-  repository_dispatch:
-    types: [frappe-framework-change]
-  workflow_dispatch:
-  schedule:
-    # Run everday at midnight UTC / 5:30 IST
-    - cron: "0 0 * * *"
+  push:
+    branches:
+      - version-16
+      - develop
 
 concurrency:
-  group: ui-develop-${{ github.event_name }}-${{ github.event.number }}
+  group: ui-develop-${{ github.event_name }}-${{ github.event.number }}-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
