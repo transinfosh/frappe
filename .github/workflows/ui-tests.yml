@@ -1,16 +1,24 @@
 name: UI
 
 on:
-  pull_request:
-  repository_dispatch:
-    types: [frappe-framework-change]
-  workflow_dispatch:
-  schedule:
-    # Run everday at midnight UTC / 5:30 IST
-    - cron: "0 0 * * *"
+  push:
+    branches:
+      - version-16
+      - develop
+    paths:
+      - "frappe/**"
+      - "playwright/**"
+      - "playwright.config.js"
+      - "pyproject.toml"
+      - "package.json"
+      - "yarn.lock"
+      - ".github/actions/setup/**"
+      - ".github/helper/**"
+      - ".github/workflows/ui-tests.yml"
+      - ".github/workflows/_base-ui-tests.yml"
 
 concurrency:
-  group: ui-develop-${{ github.event_name }}-${{ github.event.number }}
+  group: ui-develop-${{ github.event_name }}-${{ github.event.number }}-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -40,7 +48,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   test:
-    name: Tests (Cypress)
+    name: Tests (Playwright)
     uses: ./.github/workflows/_base-ui-tests.yml
     with:
       parallel-runs: 3
@@ -51,7 +59,7 @@ jobs:
   coverage:
     name: Coverage Wrap Up
     needs: [test, checkrun]
-    if: ${{ github.event_name != 'pull_request' }}
+    if: ${{ github.event_name != 'pull_request' && github.repository == 'frappe/frappe' }}
     runs-on: ubuntu-latest
     steps:
       - name: Clone

@@ -80,7 +80,7 @@ test.describe("Control Phone", () => {
 		await desk.clear_cache();
 		await reloaded;
 		await desk.click_listview_row_item(0);
-		await expect(page).toHaveTitle("Test Phone 1");
+		await expect(page).toHaveTitle("Test Phone 1 · Doctype With Phone");
 		await expect(page.locator(".selected-phone .country")).toHaveText("+91");
 		await expect(page.locator(".selected-phone > img")).toHaveAttribute("src", /\/in\.svg/);
 		await expect(desk.get_field("phone")).toHaveValue("9823341234");

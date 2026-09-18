@@ -39,7 +39,7 @@ test.describe("Grid", () => {
 			await expect(
 				table_form.locator('.frappe-control[data-fieldname="is_primary_phone"]')
 			).toBeHidden();
-			await table_form.locator(".grid-footer-toolbar").click();
+			await table_form.locator(".grid-collapse-row").click();
 		}
 	});
 
@@ -55,7 +55,7 @@ test.describe("Grid", () => {
 			await expect(
 				table_form.locator('.frappe-control[data-fieldname="is_primary_mobile_no"]')
 			).toBeHidden();
-			await table_form.locator(".grid-footer-toolbar").click();
+			await table_form.locator(".grid-collapse-row").click();
 		}
 	});
 
@@ -71,7 +71,7 @@ test.describe("Grid", () => {
 			await expect(
 				table_form.locator('.frappe-control[data-fieldname="phone"] .control-value')
 			).toHaveClass(/(^|\s)like-disabled-input(\s|$)/);
-			await table_form.locator(".grid-footer-toolbar").click();
+			await table_form.locator(".grid-collapse-row").click();
 		}
 	});
 
@@ -93,7 +93,7 @@ test.describe("Grid", () => {
 				)
 				.toBe("");
 			await expect(phone_field).not.toHaveClass(/(^|\s)has-error(\s|$)/);
-			await table_form.locator(".grid-footer-toolbar").click();
+			await table_form.locator(".grid-collapse-row").click();
 		}
 	});
 

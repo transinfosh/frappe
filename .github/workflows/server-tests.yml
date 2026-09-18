@@ -1,16 +1,24 @@
 name: Server
 
 on:
-  repository_dispatch:
-    types: [frappe-framework-change]
-  pull_request:
-  workflow_dispatch:
-  schedule:
-    # Run everday at midnight UTC / 5:30 IST
-    - cron: "0 0 * * *"
+  push:
+    branches:
+      - version-16
+      - develop
+    paths:
+      - "frappe/**"
+      - "pyproject.toml"
+      - "package.json"
+      - "yarn.lock"
+      - ".github/actions/setup/**"
+      - ".github/helper/**"
+      - ".github/workflows/server-tests.yml"
+      - ".github/workflows/_base-server-tests.yml"
+      - ".github/workflows/_base-type-check.yml"
+      - ".github/workflows/_base-migration.yml"
 
 concurrency:
-  group: server-${{ github.event_name }}-${{ github.event.number }}
+  group: server-${{ github.event_name }}-${{ github.event.number }}-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -65,7 +73,7 @@ jobs:
   coverage:
     name: Coverage Wrap Up
     needs: [test, checkrun]
-    if: ${{ needs.checkrun.outputs.build == 'strawberry' && github.event_name != 'pull_request' }}
+    if: ${{ needs.checkrun.outputs.build == 'strawberry' && github.event_name != 'pull_request' && github.repository == 'frappe/frappe' }}
     runs-on: ubuntu-latest
     steps:
       - name: Clone

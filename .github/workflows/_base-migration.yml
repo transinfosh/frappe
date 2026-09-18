@@ -55,7 +55,6 @@ jobs:
       with:
         python-version: |
           3.11
-          3.13
           ${{ inputs.python-version }}
           
 
@@ -79,12 +78,15 @@ jobs:
                 ref="${{ github.sha }}"
             else
                 ref="version-$version-hotfix"
+                if [[ "$version" == "16" ]]; then
+                    ref="version-16"
+                fi
             fi
 
             echo "Updating to $ref"
 
-            git -C apps/frappe fetch --depth 1 upstream "$ref":"$ref"
-            git -C apps/frappe checkout --quiet --force "$ref"
+            git -C apps/frappe fetch --depth 1 upstream "$ref"
+            git -C apps/frappe checkout --quiet --force FETCH_HEAD
 
             if pgrep honcho > /dev/null; then
                 pgrep honcho | xargs kill
@@ -92,6 +94,11 @@ jobs:
             fi
 
             bench migrate-env "python$python_version"
+
+            if [[ "$version" == "15" ]]; then
+                # Legacy Google API dependencies still import pkg_resources.
+                uv pip install --python "${GITHUB_WORKSPACE}/env/bin/python" "setuptools<82"
+            fi
 
             bench setup requirements
             bench start &>> ${GITHUB_WORKSPACE}/bench_start.log &
@@ -103,7 +110,7 @@ jobs:
     - name: Update to v15
       run: |
         source $RUNNER_TEMP/migrate
-        update_to_version 15 3.13
+        update_to_version 15 3.11
         exit $?
 
     - name: Update to v16

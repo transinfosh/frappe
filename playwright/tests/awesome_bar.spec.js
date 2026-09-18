@@ -57,7 +57,7 @@ test.describe("Awesome Bar", () => {
 		await expect(page.locator(".modal:visible")).toHaveCount(0);
 	});
 
-	test("opens awesome bar on click", async () => {
+	test("opens awesome bar with the search shortcut", async () => {
 		await expect(shared.page.locator("#navbar-search")).toBeVisible();
 	});
 
@@ -68,7 +68,7 @@ test.describe("Awesome Bar", () => {
 			page.locator(".awesomplete", { has: search }).getByRole("listbox")
 		).toBeVisible();
 		await search.press("Enter");
-		await expect(page.locator(TITLE)).toContainText("To Do");
+		await expect(page.locator(TITLE)).toHaveText("To Do");
 		await expect(page).toHaveURL((url) => /\/todo$/.test(url.pathname));
 	});
 
@@ -76,7 +76,7 @@ test.describe("Awesome Bar", () => {
 		const { page } = shared;
 		const search = await search_awesomebar(page, "web page");
 		await search.press("Enter");
-		await expect(page.locator(TITLE)).toContainText("Web Page");
+		await expect(page.locator(TITLE)).toHaveText("Web Page");
 		await expect(page).toHaveURL((url) => url.search === "");
 	});
 
