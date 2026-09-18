@@ -85,8 +85,8 @@ jobs:
 
             echo "Updating to $ref"
 
-            git -C apps/frappe fetch --depth 1 upstream "$ref":"$ref"
-            git -C apps/frappe checkout --quiet --force "$ref"
+            git -C apps/frappe fetch --depth 1 upstream "$ref"
+            git -C apps/frappe checkout --quiet --force FETCH_HEAD
 
             if pgrep honcho > /dev/null; then
                 pgrep honcho | xargs kill
