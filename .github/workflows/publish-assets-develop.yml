@@ -8,6 +8,8 @@ on:
 jobs:
   build-dev-and-publish:
     name: 'Build and Publish Assets for Development'
+    # This workflow publishes to Frappe's upstream asset bucket.
+    if: ${{ github.repository == 'frappe/frappe' }}
     runs-on: ubuntu-latest
 
     steps:
