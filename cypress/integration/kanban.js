@@ -18,7 +18,7 @@ context("Kanban Board", () => {
 		cy.fill_field("field_name", "Status", "Select");
 		cy.click_modal_primary_button("Save");
 
-		cy.location("pathname").should("eq", "/desk/todo/view/kanban/ToDo Kanban");
+		cy.location("pathname").should("eq", "/desk/todo/view/kanban/ToDo%20Kanban");
 	});
 
 	it("Create ToDo from kanban", () => {
