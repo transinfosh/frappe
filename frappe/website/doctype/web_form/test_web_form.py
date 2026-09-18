@@ -71,6 +71,22 @@ class TestWebForm(IntegrationTestCase):
 		self.assertIn('data-path="manage-events/new"', content)
 		self.assertIn('source-type="Generator"', content)
 
+	def test_select_translations_without_options_has_label(self):
+		web_form = frappe.new_doc("Web Form")
+		web_form.title = "Select Translation Regression"
+		field = web_form.append(
+			"web_form_fields",
+			{"fieldname": "status", "label": "Status", "fieldtype": "Select", "options": "Open\nClosed"},
+		)
+		self.assertFalse(hasattr(field, "options_has_label"))
+		context = frappe._dict()
+
+		web_form.load_translations(context)
+
+		messages = json.loads(context.translated_messages)
+		self.assertIn("Open", messages)
+		self.assertIn("Closed", messages)
+
 	def test_webform_html_meta_is_added(self):
 		set_request(method="GET", path="manage-events/new")
 		content = self.normalize_html(get_response_content("manage-events/new"))

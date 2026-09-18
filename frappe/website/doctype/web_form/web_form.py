@@ -419,7 +419,7 @@ def get_context(context):
 		for field in self.web_form_fields:
 			messages.extend([field.label, field.description])
 			if field.fieldtype == "Select" and field.options:
-				options = get_select_options(field.options, field.options_has_label)
+				options = get_select_options(field.options, field.get("options_has_label", False))
 				messages.extend(options)
 
 		# When at least one field in self.web_form_fields has fieldtype "Table" then add "No data" to messages
