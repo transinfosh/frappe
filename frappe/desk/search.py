@@ -408,15 +408,17 @@ def build_for_autosuggest(res: list[tuple], doctype: str) -> list[LinkSearchResu
 				# remove redundant title ("label") value
 				del item[2]
 
-			autosuggest_row = {"value": item[0], "description": to_string(item[1:])}
+			value = cstr(item[0]) if meta.autoname == "autoincrement" else item[0]
+			autosuggest_row = {"value": value, "description": to_string(item[1:])}
 			if label:
 				autosuggest_row["label"] = label
 
 			results.append(autosuggest_row)
 	else:
 		for item in res:
-			label = _(item[0]) if meta.translated_doctype else item[0]
-			results.append({"value": item[0], "description": to_string(item[1:]), "label": label})
+			value = cstr(item[0]) if meta.autoname == "autoincrement" else item[0]
+			label = _(value) if meta.translated_doctype else value
+			results.append({"value": value, "description": to_string(item[1:]), "label": label})
 
 	return results
 
