@@ -10,7 +10,7 @@ import frappe.utils
 from frappe import _
 from frappe.desk.reportview import validate_args
 from frappe.desk.search import PAGE_LENGTH_FOR_LINK_VALIDATION, search_widget
-from frappe.utils import attach_expanded_links, get_safe_filters
+from frappe.utils import attach_expanded_links, cstr, get_safe_filters
 from frappe.utils.caching import http_cache
 
 if TYPE_CHECKING:
@@ -488,6 +488,8 @@ def validate_link_and_fetch(
 	if not values:
 		return {}  # does not exist
 
+	if meta.autoname == "autoincrement":
+		values["name"] = cstr(values["name"])
 	name_to_compare = values["name"]
 	# this will be used to fetch fields later
 	parent_doctype = values.pop("parenttype", None)
@@ -495,7 +497,8 @@ def validate_link_and_fetch(
 	# try to match name in search result
 	# if search_result is large, assume valid link (result may not appear in some custom queries)
 	if len(search_result) < PAGE_LENGTH_FOR_LINK_VALIDATION and not any(
-		item[0] == name_to_compare for item in search_result
+		(cstr(item[0]) if meta.autoname == "autoincrement" else item[0]) == name_to_compare
+		for item in search_result
 	):
 		return {}  # no permission or filtered out
 
