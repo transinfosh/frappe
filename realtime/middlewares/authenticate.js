@@ -16,10 +16,23 @@ function authenticate_with_frappe(socket, next) {
 
 	if (namespace != get_site_name(socket)) {
 		next(new Error("Invalid namespace"));
+		return;
 	}
 
 	if (get_hostname(socket.request.headers.host) != get_hostname(socket.request.headers.origin)) {
 		next(new Error("Invalid origin"));
+		return;
+	}
+
+	let data_gateway_auth = socket.handshake.auth || {};
+	let has_data_gateway_credentials =
+		data_gateway_auth.data_gateway_enrollment_id && data_gateway_auth.data_gateway_token;
+	if (has_data_gateway_credentials) {
+		socket.user = "Guest";
+		socket.user_type = "Guest";
+		socket.installed_apps = ["tbi"];
+		socket.frappe_request = create_frappe_request(socket, { use_local_development_endpoint: true });
+		next();
 		return;
 	}
 
@@ -41,28 +54,7 @@ function authenticate_with_frappe(socket, next) {
 	}
 	socket.sid = cookies.sid;
 	socket.authorization_header = authorization_header;
-
-	socket.frappe_request = async (path, args = {}, opts = {}) => {
-		let query_args = new URLSearchParams(args);
-		if (query_args.toString()) {
-			path = path + "?" + query_args.toString();
-		}
-
-		let headers = {};
-		if (socket.authorization_header) {
-			headers["Authorization"] = socket.authorization_header;
-		} else if (socket.sid) {
-			headers["Cookie"] = `sid=${socket.sid}`;
-		}
-		const secret = await getSecretFromRedis();
-		if (secret) {
-			headers["X-Frappe-Socket-Secret"] = secret;
-		}
-		return fetch(get_url(socket, path), {
-			...opts,
-			headers,
-		});
-	};
+	socket.frappe_request = create_frappe_request(socket);
 
 	socket
 		.frappe_request("/api/method/frappe.realtime.get_user_info")
@@ -84,6 +76,36 @@ function authenticate_with_frappe(socket, next) {
 		.catch((e) => {
 			next(new Error(`Unauthorized: ${e}`));
 		});
+}
+
+function create_frappe_request(socket, { use_local_development_endpoint = false } = {}) {
+	return async (path, args = {}, opts = {}) => {
+		let query_args = new URLSearchParams(args);
+		if (query_args.toString()) {
+			path = path + "?" + query_args.toString();
+		}
+
+		let headers = {};
+		if (socket.authorization_header) {
+			headers["Authorization"] = socket.authorization_header;
+		} else if (socket.sid) {
+			headers["Cookie"] = `sid=${socket.sid}`;
+		}
+		const secret = await getSecretFromRedis();
+		if (secret) {
+			headers["X-Frappe-Socket-Secret"] = secret;
+		}
+		if (use_local_development_endpoint && conf.developer_mode) {
+			headers["X-Frappe-Site-Name"] = socket.site_name;
+		}
+		const endpoint = use_local_development_endpoint && conf.developer_mode
+			? `http://127.0.0.1:${conf.webserver_port}${path}`
+			: get_url(socket, path);
+		return fetch(endpoint, {
+			...opts,
+			headers,
+		});
+	};
 }
 
 function get_site_name(socket) {
