@@ -15,6 +15,7 @@ from frappe.core.api.file import (
 	create_new_folder,
 	get_attached_images,
 	get_files_in_folder,
+	get_max_file_size,
 	move_file,
 	unzip_file,
 )
@@ -61,6 +62,26 @@ def make_test_image_file(private=False):
 		yield _test_file
 	finally:
 		_test_file.delete()
+
+
+class TestFileSizeLimits(IntegrationTestCase):
+	def test_doctype_override_preserves_default_and_rejects_oversize(self):
+		from frappe.core.doctype.file.exceptions import MaxFileSizeReachedError
+
+		default = get_max_file_size()
+		with patch.dict(frappe.conf, {"max_file_size_by_doctype": {"ToDo": 8}}):
+			self.assertEqual(get_max_file_size("ToDo"), 8)
+			self.assertEqual(get_max_file_size("User"), default)
+			self.assertEqual(get_max_file_size(), default)
+			file = frappe.get_doc({"doctype": "File", "attached_to_doctype": "ToDo"})
+			file._content = b"12345678"
+			self.assertEqual(file.check_max_file_size(), 8)
+			file._content += b"9"
+			with self.assertRaises(MaxFileSizeReachedError):
+				file.check_max_file_size()
+		for limits in ({"ToDo": 0}, {"ToDo": -1}, {"ToDo": "invalid"}, "invalid"):
+			with self.subTest(limits=limits), patch.dict(frappe.conf, {"max_file_size_by_doctype": limits}):
+				self.assertEqual(get_max_file_size("ToDo"), default)
 
 
 class TestSimpleFile(IntegrationTestCase):

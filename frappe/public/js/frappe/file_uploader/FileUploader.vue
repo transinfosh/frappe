@@ -350,9 +350,11 @@ if (frappe.user_id !== "Guest" && props.allow_google_drive) {
 	});
 }
 if (props.restrictions.max_file_size == null) {
-	frappe.call("frappe.core.api.file.get_max_file_size").then((res) => {
-		props.restrictions.max_file_size = Number(res.message);
-	});
+	frappe
+		.call("frappe.core.api.file.get_max_file_size", { doctype: props.doctype })
+		.then((res) => {
+			props.restrictions.max_file_size = Number(res.message);
+		});
 }
 if (props.restrictions.max_number_of_files == null && props.doctype) {
 	props.restrictions.max_number_of_files = frappe.get_meta(props.doctype)?.max_attachments;
@@ -401,24 +403,25 @@ function toggle_all_private() {
 	});
 }
 function show_max_files_number_warning(file) {
+	const max_number_of_files = props.restrictions.max_number_of_files;
+	let message;
 	console.warn(
 		`File skipped because it exceeds the allowed specified limit of ${max_number_of_files} uploads`,
 		file
 	);
 	if (props.doctype) {
-		MSG = __('File "{0}" was skipped because only {1} uploads are allowed for DocType "{2}"', [
-			file.name,
-			max_number_of_files,
-			props.doctype,
-		]);
+		message = __(
+			'File "{0}" was skipped because only {1} uploads are allowed for DocType "{2}"',
+			[file.name, max_number_of_files, props.doctype]
+		);
 	} else {
-		MSG = __('File "{0}" was skipped because only {1} uploads are allowed', [
+		message = __('File "{0}" was skipped because only {1} uploads are allowed', [
 			file.name,
 			max_number_of_files,
 		]);
 	}
 	frappe.show_alert({
-		message: MSG,
+		message,
 		indicator: "orange",
 	});
 }
@@ -446,10 +449,10 @@ function add_files(file_array) {
 		});
 
 	// pop extra files as per FileUploader.restrictions.max_number_of_files
-	max_number_of_files = props.restrictions.max_number_of_files;
+	const max_number_of_files = props.restrictions.max_number_of_files;
 	if (max_number_of_files && _files.length > max_number_of_files) {
 		_files.slice(max_number_of_files).forEach((file) => {
-			show_max_files_number_warning(file, props.doctype);
+			show_max_files_number_warning(file);
 		});
 
 		_files = _files.slice(0, max_number_of_files);
@@ -490,7 +493,7 @@ function check_restrictions(file) {
 	}
 
 	if (max_file_size && file.size != null) {
-		valid_file_size = file.size < max_file_size;
+		valid_file_size = file.size <= max_file_size;
 	}
 
 	if (!is_correct_type) {
@@ -695,7 +698,10 @@ async function upload_file(file, i) {
 				}
 			};
 
-			xhr.open("POST", "/api/method/upload_file", true);
+			const upload_query = props.doctype
+				? `?doctype=${encodeURIComponent(props.doctype)}`
+				: "";
+			xhr.open("POST", `/api/method/upload_file${upload_query}`, true);
 			xhr.setRequestHeader("Accept", "application/json");
 			xhr.setRequestHeader("X-Frappe-CSRF-Token", frappe.csrf_token);
 
