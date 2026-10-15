@@ -426,6 +426,37 @@ class TestReadOnlyMode(FrappeAPITestCase):
 
 
 class TestWSGIApp(FrappeAPITestCase):
+	def test_upload_envelope_allows_multipart_at_file_limit(self):
+		from io import BytesIO
+
+		from werkzeug.wrappers import Response
+
+		def accept_upload(request):
+			self.assertEqual(request.files["file"].read(), b"12345678")
+			return Response("accepted")
+
+		with (
+			patch("frappe.core.api.file.get_max_file_size", return_value=8),
+			patch("frappe.api.handle", side_effect=accept_upload) as handler,
+		):
+			for query in ("", "?doctype=ToDo"):
+				with self.subTest(query=query):
+					response = make_request(
+						target=self.TEST_CLIENT.post,
+						args=("/api/method/upload_file" + query,),
+						kwargs={"data": {"file": (BytesIO(b"12345678"), "boundary.txt")}},
+					)
+					self.assertEqual(response.status_code, 200)
+					self.assertEqual(response.data, b"accepted")
+			handler.reset_mock()
+			response = make_request(
+				target=self.TEST_CLIENT.post,
+				args=("/api/method/upload_file",),
+				kwargs={"data": {"file": (BytesIO(b"x" * (2 * 1024 * 1024)), "oversize.txt")}},
+			)
+			self.assertEqual(response.status_code, 413)
+			handler.assert_not_called()
+
 	def test_request_hooks_v1(self):
 		self.addCleanup(lambda: _test_REQ_HOOK.clear())
 

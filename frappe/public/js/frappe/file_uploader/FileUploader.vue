@@ -401,24 +401,26 @@ function toggle_all_private() {
 	});
 }
 function show_max_files_number_warning(file) {
+	const max_number_of_files = props.restrictions.max_number_of_files;
+	let message;
 	console.warn(
 		`File skipped because it exceeds the allowed specified limit of ${max_number_of_files} uploads`,
 		file
 	);
 	if (props.doctype) {
-		MSG = __('File "{0}" was skipped because only {1} uploads are allowed for DocType "{2}"', [
+		message = __('File "{0}" was skipped because only {1} uploads are allowed for DocType "{2}"', [
 			file.name,
 			max_number_of_files,
 			props.doctype,
 		]);
 	} else {
-		MSG = __('File "{0}" was skipped because only {1} uploads are allowed', [
+		message = __('File "{0}" was skipped because only {1} uploads are allowed', [
 			file.name,
 			max_number_of_files,
 		]);
 	}
 	frappe.show_alert({
-		message: MSG,
+		message,
 		indicator: "orange",
 	});
 }
@@ -449,7 +451,7 @@ function add_files(file_array) {
 	const max_number_of_files = props.restrictions.max_number_of_files;
 	if (max_number_of_files && _files.length > max_number_of_files) {
 		_files.slice(max_number_of_files).forEach((file) => {
-			show_max_files_number_warning(file, props.doctype);
+			show_max_files_number_warning(file);
 		});
 
 		_files = _files.slice(0, max_number_of_files);
