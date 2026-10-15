@@ -82,7 +82,11 @@ def get_files_by_search_text(text: str) -> list[dict]:
 
 
 @frappe.whitelist(allow_guest=True)
-def get_max_file_size() -> int:
+def get_max_file_size(doctype: str | None = None) -> int:
+	"""Return the file limit in bytes, with optional site-configured DocType overrides."""
+	limits = frappe.conf.get("max_file_size_by_doctype") or {}
+	if doctype and isinstance(limits, dict) and (limit := cint(limits.get(doctype))) > 0:
+		return limit
 	return (
 		cint(frappe.get_system_settings("max_file_size")) * 1024 * 1024
 		or cint(frappe.conf.get("max_file_size"))

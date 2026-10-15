@@ -350,7 +350,7 @@ if (frappe.user_id !== "Guest" && props.allow_google_drive) {
 	});
 }
 if (props.restrictions.max_file_size == null) {
-	frappe.call("frappe.core.api.file.get_max_file_size").then((res) => {
+	frappe.call("frappe.core.api.file.get_max_file_size", { doctype: props.doctype }).then((res) => {
 		props.restrictions.max_file_size = Number(res.message);
 	});
 }
@@ -446,7 +446,7 @@ function add_files(file_array) {
 		});
 
 	// pop extra files as per FileUploader.restrictions.max_number_of_files
-	max_number_of_files = props.restrictions.max_number_of_files;
+	const max_number_of_files = props.restrictions.max_number_of_files;
 	if (max_number_of_files && _files.length > max_number_of_files) {
 		_files.slice(max_number_of_files).forEach((file) => {
 			show_max_files_number_warning(file, props.doctype);
@@ -490,7 +490,7 @@ function check_restrictions(file) {
 	}
 
 	if (max_file_size && file.size != null) {
-		valid_file_size = file.size < max_file_size;
+		valid_file_size = file.size <= max_file_size;
 	}
 
 	if (!is_correct_type) {
@@ -654,7 +654,8 @@ function upload_file(file, i) {
 				}
 			}
 		};
-		xhr.open("POST", "/api/method/upload_file", true);
+		const upload_query = props.doctype ? `?doctype=${encodeURIComponent(props.doctype)}` : "";
+		xhr.open("POST", `/api/method/upload_file${upload_query}`, true);
 		xhr.setRequestHeader("Accept", "application/json");
 		xhr.setRequestHeader("X-Frappe-CSRF-Token", frappe.csrf_token);
 

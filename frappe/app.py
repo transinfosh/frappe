@@ -227,7 +227,12 @@ def init_request(request):
 	if request.path.startswith("/api/method/upload_file"):
 		from frappe.core.api.file import get_max_file_size
 
-		request.max_content_length = get_max_file_size()
+		# Multipart fields are not parsed yet. The query hint only controls the
+		# request envelope; File validates the actual attached_to_doctype again.
+		upload_doctype = request.args.get("doctype")
+		request.max_content_length = get_max_file_size(upload_doctype)
+		if upload_doctype:
+			request.max_content_length += 1024 * 1024  # multipart overhead
 	else:
 		request.max_content_length = cint(frappe.local.conf.get("max_file_size")) or 25 * 1024 * 1024
 	make_form_dict(request)
