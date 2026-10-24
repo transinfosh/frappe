@@ -101,40 +101,34 @@ test.describe("Kanban Board", () => {
 		await admin.call("frappe.tests.ui_test_helpers.ensure_todo_kanban_board");
 	});
 
-	test("Create ToDo Kanban", async ({ page, desk, api }) => {
-		const r = await api.call("frappe.client.get_value", {
-			doctype: "Kanban Board",
-			filters: { name: "ToDo Kanban" },
-			fieldname: "name",
-		});
-		if (r.message?.name) {
-			await visit_todo_kanban(page, desk);
-			await expect(page.locator(TITLE)).toContainText("ToDo Kanban");
-			await expect(page).toHaveURL(
-				(url) => decodeURIComponent(url.pathname) === TODO_KANBAN_URL
+	test("Create ToDo Kanban", async ({ page, desk, admin }) => {
+		const board_name = `Test Kanban Creation ${Date.now()}`;
+		try {
+			await page.goto("/desk/todo");
+			// the Kanban row hosts the boards submenu (it doesn't act on
+			// click) — creation lives in the submenu's Create Board row
+			await page.locator(VIEW_SWITCHER).click();
+			await menu_item(page, "Kanban View").hover();
+			await menu_item(page, "Create Board").click();
+
+			const board_name_input = page.locator(
+				'.modal:visible [data-fieldname="board_name"] input'
 			);
-			return;
+			await expect(board_name_input).toBeVisible();
+			await board_name_input.focus();
+			await board_name_input.blur();
+			await desk.fill_field("board_name", board_name, "Data");
+			await desk.fill_field("field_name", "Status", "Select");
+			await desk.click_modal_primary_button("Save");
+
+			await expect(page).toHaveURL(
+				(url) =>
+					url.pathname === `/desk/todo/view/kanban/${encodeURIComponent(board_name)}`
+			);
+			await expect(page.locator(TITLE)).toHaveText(board_name);
+		} finally {
+			await admin.remove_doc("Kanban Board", board_name, true);
 		}
-
-		await page.goto("/desk/todo");
-		// the Kanban row hosts the boards submenu (it doesn't act on
-		// click) — creation lives in the submenu's Create Board row
-		await page.locator(VIEW_SWITCHER).click();
-		await menu_item(page, "Kanban View").hover();
-		await menu_item(page, "Create Board").click();
-
-		const board_name = page.locator('.modal:visible [data-fieldname="board_name"] input');
-		await expect(board_name).toBeVisible();
-		await board_name.focus();
-		await board_name.blur();
-		await desk.fill_field("board_name", "ToDo Kanban", "Data");
-		await desk.fill_field("field_name", "Status", "Select");
-		await desk.click_modal_primary_button("Save");
-
-		await expect(page).toHaveURL(
-			(url) => decodeURIComponent(url.pathname) === TODO_KANBAN_URL
-		);
-		await expect(page.locator(TITLE)).toContainText("ToDo Kanban");
 	});
 
 	test("Open a board from the view switcher on list view", async ({ page, desk }) => {

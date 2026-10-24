@@ -21,7 +21,10 @@ class TestGoogleOAuth(IntegrationTestCase):
 	def test_service_credentials_refresh_with_google_auth(self):
 		settings = Mock(client_id="fixture-client")
 		settings.get_password.return_value = "fixture-secret"
-		with patch.object(frappe, "get_single", return_value=settings), patch.object(google_oauth, "build") as build:
+		with (
+			patch.object(frappe, "get_single", return_value=settings),
+			patch("googleapiclient.discovery.build") as build,
+		):
 			oauth = google_oauth.GoogleOAuth("contacts", validate=False)
 			oauth.get_google_service_object("old-token", "fixture-refresh")
 		credentials = build.call_args.kwargs["credentials"]
