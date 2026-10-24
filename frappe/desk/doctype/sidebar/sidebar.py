@@ -11,8 +11,8 @@ Every module in the desk has a sidebar. It starts from one of two sources:
      doctypes, reports and pages.
 
 Both sources produce the same shape, so callers do not need to know which one was used. The
-only difference is the `computed` flag, which the desk reads so a display limit is not mistaken
-for a user's choice.
+only difference is the `computed` flag, which keeps generated navigation distinct from an app's
+explicit choice of links when resolving a route.
 
 `resolve_sidebar` then resolves that sidebar for one user, in this order:
 
@@ -1167,19 +1167,6 @@ def build_sidebar(module: str, workspaces: list[frappe._dict]) -> frappe._dict:
 # Workspaces come first, because a module that has one should open there.
 MODULE_CONTENT_ENTITIES = ("Workspace", "Dashboard", "DocType", "Report", "Page")
 
-# How many of a module's doctypes a computed sidebar lists.
-#
-# This is a display limit only. Without it, a module with sixty doctypes would draw sixty
-# top-level links.
-#
-# It must only affect what is drawn, never where a document opens. See the `computed` flag on a
-# resolved sidebar for how routing is kept independent of it.
-COMPUTED_DOCTYPE_LIMIT = 15
-
-# Where `arrange_contents` records how many doctypes the limit dropped, so `generate_items` can
-# say so. Not an entity, so every reader of a contents dict skips it by name.
-OVERFLOW_KEY = "_dropped_doctypes"
-
 # The icon a module gets in the dock when it specifies none.
 DEFAULT_HEADER_ICON = "hammer"
 
@@ -1213,7 +1200,7 @@ def get_module_contents(modules: list[str]) -> dict[str, dict[str, list]]:
 		if entity == "Page":
 			fields.append("title")
 
-		for row in frappe.get_all(entity, filters=filters, fields=fields, order_by="creation asc"):
+		for row in frappe.get_all(entity, filters=filters, fields=fields, order_by="name asc"):
 			if bucket := contents.get(row.module):
 				bucket[entity].append(row)
 
@@ -1221,24 +1208,14 @@ def get_module_contents(modules: list[str]) -> dict[str, dict[str, list]]:
 
 
 def arrange_contents(held: dict[str, list]) -> dict[str, list]:
-	"""Return one module's contents, trimmed to the display limit and ordered as the sidebar
-	lists them.
+	"""Return all of one module's contents, ordered as the sidebar lists them.
 
 	`generate_items` walks this dict in order, so the key order is the sidebar order. A module
 	with a workspace leads with it. A module without one leads with its doctypes, which are then
 	the first thing to land on.
 	"""
-	dropped = max(0, len(held["DocType"]) - COMPUTED_DOCTYPE_LIMIT)
-	held["DocType"] = held["DocType"][:COMPUTED_DOCTYPE_LIMIT]
-
 	if not held["Workspace"]:
 		held = {"DocType": held["DocType"], **held}
-
-	# Carried so the sidebar can say what it left out. A limit that draws fewer doctypes than the
-	# module holds is fine; one that does it silently is not, because the reading it invites is
-	# that the module does not hold them.
-	if dropped:
-		held[OVERFLOW_KEY] = dropped
 
 	return held
 
@@ -1256,7 +1233,7 @@ def generate_items(held: dict[str, list], module: str | None = None) -> list[dic
 	icons = {"Report": "table", "Page": "panel-top", "Workspace": "wallpaper"}
 
 	for entity, rows in held.items():
-		if entity == OVERFLOW_KEY or not rows:
+		if not rows:
 			continue
 
 		# A single dashboard or page needs no section. A report always gets one, because
@@ -1287,27 +1264,6 @@ def generate_items(held: dict[str, list], module: str | None = None) -> list[dic
 				item["child"] = 1
 
 			items.append(item)
-
-		# Said once, right after the doctypes it applies to. A computed sidebar draws at most
-		# COMPUTED_DOCTYPE_LIMIT of them, and the rest were reachable but unlisted, which reads
-		# as the module not holding them.
-		#
-		# It links to the full list rather than being a dead label, and it is an ordinary
-		# `DocType` item, so `is_item_allowed` filters it away for anyone without read access to
-		# `DocType`. That is the intended audience: the row is only actionable by someone who
-		# can ship the module a `Sidebar` or reorganise it, and it would be noise for everyone
-		# else.
-		if entity == "DocType" and held.get(OVERFLOW_KEY):
-			items.append(
-				{
-					"type": "Link",
-					"link_type": "DocType",
-					"link_to": "DocType",
-					"label": _("{0} more not shown").format(held[OVERFLOW_KEY]),
-					"icon": "more-horizontal",
-					"filters": json.dumps([["DocType", "module", "=", module]]) if module else None,
-				}
-			)
 
 	return items
 
@@ -1558,8 +1514,8 @@ class ResolvedSidebar:
 			"customized": 1 if self.customized else 0,
 			# Whether these items were computed from the module's contents or shipped by an app.
 			# The desk reads this when deciding where a document opens. Something missing from a
-			# shipped sidebar was left out on purpose; something missing from a computed one may
-			# only have fallen past the display limit.
+			# shipped sidebar was left out on purpose; generated navigation still belongs to its
+			# module even when a customization hides an item.
 			"computed": 1 if self.computed else 0,
 			"workspaces": self.workspaces,
 			"items": self.items,
@@ -1815,10 +1771,8 @@ def get_sidebar_bases(modules: list[str]) -> dict[str, frappe._dict]:
 	sidebar means unfinished, not hidden.
 
 	Each sidebar carries `computed`, saying whether its rows were built here or shipped by an
-	app. The desk needs that difference: something missing from a shipped sidebar was left out
-	on purpose, while something missing from a computed one may have fallen past
-	`COMPUTED_DOCTYPE_LIMIT`. Routing reads the flag so a display limit cannot decide where a
-	document opens.
+	app. Routing preserves ownership for computed modules even if a customization hides a link;
+	an app's explicit choice of links can instead assign the entity to another shell.
 
 	Ordered by module and then by shell name, so callers that walk the result in order, such as
 	the boot payload and through it `build_entity_module_map` and the desk's
@@ -2288,6 +2242,7 @@ def build_canonical_shells(
 	The order is the ladder's own:
 
 	  owned          an item flagged `is_default_module` claims the entity
+	  configured     the only shipped app sidebar listing the entity beats computed navigation
 	  module+listed  the entity's module has a shell, and that shell lists the entity
 	  module+computed  its shell was computed, so not listing the entity decides nothing
 	  heir+listed    the module ships no navigation, and an heir it declared lists the entity
@@ -2472,14 +2427,18 @@ class ShellIndex:
 		listed = [shell for shell in self.listed_in(kind, entity) if shell != PRIVATE_MODULE]
 		own = self.shell_of(module)
 
+		# A sole app-authored link is intentional, unlike the links a module generates for itself.
+		configured = [
+			shell for shell in listed if self.all[shell].get("app") and shell not in self.computed
+		]
+		if len(configured) == 1:
+			return configured[0]
+
 		if own and own in listed:
 			return own
 
-		# Not listing something only means something when someone chose what the sidebar lists. A
-		# computed sidebar lists what its module holds, capped at COMPUTED_DOCTYPE_LIMIT, so an
-		# entity missing from one was not left out, it fell past a display limit. Reading that as a
-		# decision would hand the entity to whichever other shell happens to link it. A module
-		# always contains its own entities, so a computed sidebar answers for them regardless.
+		# A computed sidebar answers for its module's entities even when a customization hides
+		# their links. It must not hand ownership to another shell that happens to list them.
 		#
 		# This matters for exactly the modules nobody wrote a sidebar for, which is every module a
 		# customer adds. A site whose apps all ship one has no computed shells at all, which is why

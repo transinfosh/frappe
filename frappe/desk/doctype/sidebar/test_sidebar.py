@@ -877,9 +877,9 @@ class TestCanonicalShell(IntegrationTestCase):
 	def test_a_computed_sidebar_keeps_its_module_s_entities_anyway(self):
 		"""Not listing something only says something when someone chose what the sidebar lists.
 
-		A computed sidebar lists what its module holds, capped at a display limit, so an entity
-		missing from one was not left out. Reading that as a decision hands the entity to whichever
-		other shell happens to link it. This is the case for every module a customer adds, since
+		A computed sidebar belongs to its module even when a customization hides an entity.
+		Treating that as an ownership decision hands the entity to whichever other shell happens
+		to link it. This is the case for every module a customer adds, since
 		nobody shipped a sidebar for it, and a site whose apps all ship one has no computed shells
 		at all -- which is why leaving this out looks harmless.
 		"""
@@ -889,6 +889,31 @@ class TestCanonicalShell(IntegrationTestCase):
 				"Selling": {"lists": [("DocType", "Widget")]},
 			}
 		)
+
+		self.assertEqual(ShellIndex(index).resolve("DocType", "Widget", "Widgets"), "Widgets")
+
+	def test_the_only_shipped_app_sidebar_wins_over_generated_navigation(self):
+		index = shell_payload(
+			{
+				"Widgets": {"computed": 1, "lists": [("DocType", "Widget")]},
+				"Selling": {"lists": [("DocType", "Widget")]},
+			}
+		)
+		index["Widgets"]["app"] = "widgets"
+		index["Selling"]["app"] = "sales"
+
+		self.assertEqual(ShellIndex(index).resolve("DocType", "Widget", "Widgets"), "Selling")
+
+	def test_multiple_shipped_app_sidebars_keep_module_resolution(self):
+		index = shell_payload(
+			{
+				"Widgets": {"computed": 1, "lists": [("DocType", "Widget")]},
+				"Selling": {"lists": [("DocType", "Widget")]},
+				"Buying": {"lists": [("DocType", "Widget")]},
+			}
+		)
+		for sidebar in index.values():
+			sidebar["app"] = "example"
 
 		self.assertEqual(ShellIndex(index).resolve("DocType", "Widget", "Widgets"), "Widgets")
 
