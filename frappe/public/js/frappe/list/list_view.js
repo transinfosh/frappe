@@ -46,7 +46,8 @@ frappe.views.ListView = class ListView extends frappe.views.BaseList {
 		this.virtualization_threshold = 2000; // row count at which we switch to virtual mode
 		this.virtualization_row_buffer = 20; // used to extend the window above/below viewport (desktop)
 		this.virtualization_row_height = 44; // desktop height guess until we measure a real row
-		// Selected row names — needed in virtual mode because off-screen rows are not in the DOM.
+		// Store names as strings, matching checkbox attributes even for autoincrement doctypes.
+		// Needed in virtual mode because off-screen rows are not in the DOM.
 		this.checked_docnames = new Set();
 		this.virtualization_state = {
 			enabled: false, // when true, scroll handler calls render_virtual_rows
@@ -1158,7 +1159,7 @@ frappe.views.ListView = class ListView extends frappe.views.BaseList {
 			return;
 		}
 
-		const valid_names = new Set(this.data.map((doc) => doc.name));
+		const valid_names = new Set(this.data.map((doc) => cstr(doc.name)));
 		for (const name of this.checked_docnames) {
 			if (!valid_names.has(name)) {
 				this.checked_docnames.delete(name);
@@ -1183,7 +1184,7 @@ frappe.views.ListView = class ListView extends frappe.views.BaseList {
 	find_checkbox_by_docname(docname) {
 		// DOM lookup helper used by shift-select and test assertions.
 		return this.$result.find(".list-row-checkbox").filter((_, el) => {
-			return this.get_checkbox_docname($(el)) === docname;
+			return this.get_checkbox_docname($(el)) === cstr(docname);
 		});
 	}
 
@@ -1207,7 +1208,7 @@ frappe.views.ListView = class ListView extends frappe.views.BaseList {
 	 */
 	set_select_all_checked(checked) {
 		if (checked) {
-			this.data.forEach((doc) => this.checked_docnames.add(doc.name));
+			this.data.forEach((doc) => this.checked_docnames.add(cstr(doc.name)));
 			return;
 		}
 
@@ -2231,15 +2232,15 @@ frappe.views.ListView = class ListView extends frappe.views.BaseList {
 			if (e.shiftKey && this.$checkbox_cursor && !$target.is(this.$checkbox_cursor)) {
 				const name_1 = this.get_checkbox_docname(this.$checkbox_cursor);
 				const name_2 = this.get_checkbox_docname($target);
-				const index_1 = this.data.findIndex((d) => d.name === name_1);
-				const index_2 = this.data.findIndex((d) => d.name === name_2);
+				const index_1 = this.data.findIndex((d) => cstr(d.name) === name_1);
+				const index_2 = this.data.findIndex((d) => cstr(d.name) === name_2);
 				let [min_index, max_index] = [index_1, index_2];
 
 				if (min_index > max_index) {
 					[min_index, max_index] = [max_index, min_index];
 				}
 
-				let docnames = this.data.slice(min_index + 1, max_index).map((d) => d.name);
+				let docnames = this.data.slice(min_index + 1, max_index).map((d) => cstr(d.name));
 				docnames.forEach((name) => this.checked_docnames.add(name));
 				docnames.forEach((name) => {
 					this.find_checkbox_by_docname(name).prop("checked", true);
@@ -2434,7 +2435,8 @@ frappe.views.ListView = class ListView extends frappe.views.BaseList {
 	}
 
 	remove_list_items(names) {
-		for (let name of names) {
+		for (const docname of names) {
+			const name = cstr(docname);
 			this.checked_docnames.delete(name);
 			this.$result
 				.find(`.list-row-checkbox[data-name='${name.replace(/'/g, "\\'")}']`)
