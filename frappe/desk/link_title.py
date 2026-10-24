@@ -11,13 +11,17 @@ TITLE_BATCH_SIZE = 500
 
 
 def get_link_title_field(doctype: str) -> str | None:
-	"""Title field configured for `doctype`, or None when the user may not read it."""
+	"""Configured title field; child-table permissions are checked against each row's parent."""
 	meta = frappe.get_meta(doctype)
 	if not (meta.show_title_field_in_link and meta.title_field):
 		return None
 
 	title_field = meta.title_field.strip()
-	if title_field == "name" or not frappe.has_permission(doctype, "select"):
+	if title_field == "name":
+		return None
+	if meta.istable:
+		return title_field
+	if not frappe.has_permission(doctype, "select"):
 		return None
 	if title_field not in get_permitted_fields(doctype, ignore_virtual=True):
 		return None
@@ -27,6 +31,12 @@ def get_link_title_field(doctype: str) -> str | None:
 
 def get_link_titles(doctype: str, title_field: str, names: set[str]) -> dict[str, str]:
 	"""Titles of the readable documents among `names`, keyed by document name."""
+	names = {name for name in names if not _is_empty_link_value(name)}
+	if not names:
+		return {}
+	if frappe.get_meta(doctype).istable:
+		return _get_child_link_titles(doctype, title_field, names)
+
 	titles = {}
 	for names_batch in create_batch(list(names), TITLE_BATCH_SIZE):
 		rows = frappe.get_list(
@@ -36,6 +46,23 @@ def get_link_titles(doctype: str, title_field: str, names: set[str]) -> dict[str
 			limit=len(names_batch),
 		)
 		titles.update({row.name: row.get(title_field) for row in rows})
+	return titles
+
+
+def _get_child_link_titles(doctype: str, title_field: str, names: set[str]) -> dict[str, str]:
+	titles = {}
+	for name in names:
+		try:
+			doc = frappe.get_lazy_doc(doctype, name)
+			if not frappe.has_permission(doctype, doc=doc):
+				continue
+			if title_field not in get_permitted_fields(
+				doctype, parenttype=doc.parenttype, ignore_virtual=True
+			):
+				continue
+			titles[doc.name] = doc.get(title_field)
+		except frappe.DoesNotExistError:
+			frappe.clear_last_message()
 	return titles
 
 
@@ -79,6 +106,10 @@ def get_link_names_by_doctype(columns, rows) -> dict[str, set]:
 				name = row.get(fieldname)
 			else:
 				name = row[index] if index < len(row) else None
-			if name:
+			if not _is_empty_link_value(name):
 				names_by_doctype.setdefault(doctype, set()).add(name)
 	return names_by_doctype
+
+
+def _is_empty_link_value(value) -> bool:
+	return value is None or (isinstance(value, str) and value in {"", "null", "undefined"})
