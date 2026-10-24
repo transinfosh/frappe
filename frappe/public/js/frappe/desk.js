@@ -457,47 +457,9 @@ frappe.Application = class Application {
 		)}`;
 	}
 	set_favicon() {
-		this.default_favicon = $('link[type="image/x-icon"]').first().attr("href");
-		this.update_favicon();
-		$(document).on("page-change", () => this.update_favicon());
-	}
-
-	update_favicon() {
-		const route = frappe.get_route() || [];
-		const apps = frappe.boot.app_data || [];
-		let module;
-		let app_name;
-
-		if (["Form", "List", "Tree"].includes(route[0]) && route[1]) {
-			module = frappe.get_meta(route[1])?.module;
-		} else if (route[0] === "Workspaces") {
-			const workspace = route[1] === "private" ? route[2] : route[1];
-			const workspace_page = workspace && frappe.workspaces?.[frappe.router.slug(workspace)];
-			module = workspace_page?.module;
-			// Workspace ownership now lives on sidebars, not app_data's dock entries.
-			const sidebar =
-				workspace &&
-				Object.values(frappe.boot.module_sidebars || {}).find((sidebar) =>
-					sidebar.workspaces?.includes(workspace_page?.name || workspace)
-				);
-			app_name = sidebar?.app || workspace_page?.app;
-		} else {
-			module = locals.Page?.[route[0]]?.module;
-		}
-
-		app_name = app_name || (module && frappe.boot.module_app?.[frappe.scrub(module)]);
-		if (route[0] === "Workspaces") {
-			app_name = frappe.boot.app_rail_host?.[app_name] || app_name;
-		}
-		const app = apps.find((app) => app.app_name === app_name);
-		const app_logo = Array.isArray(app?.app_logo_url)
-			? app.app_logo_url.at(-1)
-			: app?.app_logo_url;
-		const link = app_logo || this.default_favicon;
-
-		$('link[rel~="icon"]').remove();
-		$("<link>", { rel: "shortcut icon", href: link, type: "image/x-icon" }).appendTo("head");
-		$("<link>", { rel: "icon", href: link, type: "image/x-icon" }).appendTo("head");
+		var link = $('link[type="image/x-icon"]').remove().attr("href");
+		$('<link rel="shortcut icon" href="' + link + '" type="image/x-icon">').appendTo("head");
+		$('<link rel="icon" href="' + link + '" type="image/x-icon">').appendTo("head");
 	}
 	trigger_primary_action() {
 		// to trigger change event on active input before triggering primary action
