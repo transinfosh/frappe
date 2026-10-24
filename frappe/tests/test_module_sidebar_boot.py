@@ -9,13 +9,17 @@ from frappe.core.doctype.module_def.test_module_def import custom_module
 from frappe.desk.doctype.custom_sidebar.test_custom_sidebar import make_user
 from frappe.desk.doctype.sidebar.sidebar import (
 	SidebarContext,
+	clear_computed_base_cache,
 	filter_sidebar_items,
+	get_computed_base,
 	get_module_landing_route,
 	get_navigable_modules,
 	get_sidebar_bases,
 	resolve_sidebar,
 )
 from frappe.desk.doctype.sidebar.test_sidebar import (
+	delete_page,
+	make_page,
 	make_report,
 	make_sidebar,
 	no_developer_mode,
@@ -406,6 +410,31 @@ class TestSidebarBoot(IntegrationTestCase):
 		with self.assertQueryCount(5):
 			get_module_contents(modules)
 
+	def test_computed_sidebar_lists_all_doctypes_in_name_order(self):
+		module = "Core"
+		expected = frappe.get_all(
+			"DocType", filters={"module": module, "istable": 0}, pluck="name", order_by="name asc"
+		)
+		self.assertGreater(len(expected), 15, "exercise the previous display limit")
+		clear_computed_base_cache(module)
+		self.addCleanup(clear_computed_base_cache, module)
+
+		base = get_computed_base(module)
+		listed = [row.link_to for row in base.rows if row.get("link_type") == "DocType"]
+
+		self.assertEqual(listed, expected)
+
+	def test_computed_sidebar_sorts_pages_by_name_instead_of_creation(self):
+		with sidebarless_module("Test Computed Name Order Module") as module:
+			for name in ("test-sidebar-zulu", "test-sidebar-alpha"):
+				make_page(module, name)
+				self.addCleanup(delete_page, name)
+
+			base = get_computed_base(module)
+			listed = [row.link_to for row in base.rows if row.get("link_type") == "Page"]
+
+			self.assertEqual(listed, ["test-sidebar-alpha", "test-sidebar-zulu"])
+
 	def test_reading_a_sidebar_does_not_write_to_the_cache(self):
 		"""`frappe.cache.hget` keeps a copy in `frappe.local.cache` and returns the same object every
 		time within a request. `get_sidebar_bases` stamps `computed` on every sidebar it returns, so
@@ -421,10 +450,8 @@ class TestSidebarBoot(IntegrationTestCase):
 			self.assertNotIn("computed", cached, "the cached sidebar must not carry the stamp")
 
 	def test_a_computed_base_says_it_is_computed(self):
-		"""So the desk can tell an app leaving something out from the display limit doing so. An entity
-		missing from a shipped sidebar was left out on purpose; one missing from a computed sidebar
-		may have fallen past `COMPUTED_DOCTYPE_LIMIT`, and routing must not read the two the same
-		way.
+		"""Generated navigation retains module ownership after a customization hides a link;
+		a shipped sidebar can explicitly assign that entity to another shell.
 		"""
 		with sidebarless_module("Test Says Computed Module") as module:
 			self.assertEqual(get_sidebar_bases([module])[module].computed, 1)
