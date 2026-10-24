@@ -367,14 +367,8 @@ class Workspace(Document, DeskViews):
 		return bool(frappe.conf.developer_mode and self.standard and self.module)
 
 	def before_export(self, doc):
-		if doc.title and not doc.label:
-			doc.label = doc.title
-
-		if not doc.name and doc.label:
-			doc.name = doc.label
-
-		if not doc.title and doc.name:
-			doc.title = doc.name
+		if doc.title != doc.label and doc.label == doc.name:
+			self.name = doc.name = doc.label = doc.title
 
 	def on_trash(self):
 		if self.public and not is_workspace_manager():
