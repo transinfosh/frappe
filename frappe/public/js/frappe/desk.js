@@ -464,6 +464,7 @@ frappe.Application = class Application {
 
 	update_favicon() {
 		const route = frappe.get_route() || [];
+		const apps = frappe.boot.app_data || [];
 		let module;
 		let app_name;
 
@@ -471,17 +472,24 @@ frappe.Application = class Application {
 			module = frappe.get_meta(route[1])?.module;
 		} else if (route[0] === "Workspaces") {
 			const workspace = route[1] === "private" ? route[2] : route[1];
-			const workspace_page = workspace && frappe.workspaces[frappe.router.slug(workspace)];
+			const workspace_page = workspace && frappe.workspaces?.[frappe.router.slug(workspace)];
 			module = workspace_page?.module;
-			app_name = frappe.boot.app_data.find((app) =>
-				app.workspaces.includes(workspace_page?.name)
-			)?.app_name;
+			// Workspace ownership now lives on sidebars, not app_data's dock entries.
+			const sidebar =
+				workspace &&
+				Object.values(frappe.boot.module_sidebars || {}).find((sidebar) =>
+					sidebar.workspaces?.includes(workspace_page?.name || workspace)
+				);
+			app_name = sidebar?.app || workspace_page?.app;
 		} else {
 			module = locals.Page?.[route[0]]?.module;
 		}
 
-		app_name = app_name || (module && frappe.boot.module_app[frappe.scrub(module)]);
-		const app = frappe.boot.app_data.find((app) => app.app_name === app_name);
+		app_name = app_name || (module && frappe.boot.module_app?.[frappe.scrub(module)]);
+		if (route[0] === "Workspaces") {
+			app_name = frappe.boot.app_rail_host?.[app_name] || app_name;
+		}
+		const app = apps.find((app) => app.app_name === app_name);
 		const app_logo = Array.isArray(app?.app_logo_url)
 			? app.app_logo_url.at(-1)
 			: app?.app_logo_url;
