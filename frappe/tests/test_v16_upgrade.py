@@ -25,7 +25,7 @@ from frappe.desk.doctype.sidebar.sidebar import clear_computed_base_cache, item_
 from frappe.desk.doctype.sidebar.test_sidebar import make_sidebar, no_developer_mode
 from frappe.desk.doctype.workspace.workspace import PRIVATE_MODULE
 from frappe.patches.v16_0.sidebar_archive import layer_rows, write_user_layer
-from frappe.tests import IntegrationTestCase
+from frappe.tests import IntegrationTestCase, UnitTestCase
 
 # in the order `patches.txt` runs them
 CONVERSION = (
@@ -1228,3 +1228,46 @@ def desktop_icon(label: str, roles: list[str] | None = None, icon_type: str = "L
 
 def link(doctype: str, label: str, **extra) -> dict:
 	return {"type": "Link", "link_type": "DocType", "link_to": doctype, "label": label, **extra}
+
+
+class TestGeneratedSidebarDetection(UnitTestCase):
+	def test_tied_first_items_identify_the_app_workspace_in_either_order(self):
+		from frappe.patches.v16_0.sidebar_archive import app_workspace_of
+
+		home = {"idx": 1, "link_type": "Workspace", "link_to": "Manufacturing"}
+		order = {"idx": 1, "link_type": "DocType", "link_to": "M0120"}
+		workspace = frappe._dict(name="Manufacturing", module="Manufacturing", standard=1)
+		for rows in ([home, order], [order, home]):
+			with (
+				self.subTest(rows=rows),
+				patch("frappe.patches.v16_0.sidebar_archive.frappe.db.get_value", return_value=workspace),
+			):
+				self.assertEqual(app_workspace_of(frappe._dict(name="Manufacturing", rows=rows)), workspace)
+
+	def test_a_workspace_link_after_the_first_position_is_not_app_generated(self):
+		from frappe.patches.v16_0.sidebar_archive import app_workspace_of
+
+		row = frappe._dict(
+			name="Manufacturing",
+			rows=[
+				{"idx": 1, "link_type": "DocType", "link_to": "M0120"},
+				{"idx": 2, "link_type": "Workspace", "link_to": "Manufacturing"},
+			],
+		)
+		with patch("frappe.patches.v16_0.sidebar_archive.frappe.db.get_value") as get_value:
+			self.assertIsNone(app_workspace_of(row))
+		get_value.assert_not_called()
+
+	def test_a_tied_first_link_to_a_nonstandard_workspace_is_not_app_generated(self):
+		from frappe.patches.v16_0.sidebar_archive import app_workspace_of
+
+		row = frappe._dict(
+			name="Manufacturing",
+			rows=[
+				{"idx": 1, "link_type": "DocType", "link_to": "M0120"},
+				{"idx": 1, "link_type": "Workspace", "link_to": "Manufacturing"},
+			],
+		)
+		workspace = frappe._dict(name="Manufacturing", module="Manufacturing", standard=0)
+		with patch("frappe.patches.v16_0.sidebar_archive.frappe.db.get_value", return_value=workspace):
+			self.assertIsNone(app_workspace_of(row))

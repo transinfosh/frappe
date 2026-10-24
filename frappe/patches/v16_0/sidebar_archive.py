@@ -98,10 +98,19 @@ def app_workspace_of(row) -> frappe._dict | None:
 
 	The row is named after the workspace, and its first item is the link to it. Only the first:
 	a person's own sidebar may well link to a workspace somewhere down the list, and treating it as
-	the app's would drop what they wrote.
+	the app's would drop what they wrote. Old rows can share the first idx, so consider every item
+	at that position rather than depending on the database's order for ties.
 	"""
-	first = next(iter(row.rows or ()), None)
-	if not first or first.get("link_type") != "Workspace" or first.get("link_to") != row.name:
+	rows = row.rows or ()
+	if not rows:
+		return None
+	first_idx = min(item.get("idx") or 0 for item in rows)
+	if not any(
+		(item.get("idx") or 0) == first_idx
+		and item.get("link_type") == "Workspace"
+		and item.get("link_to") == row.name
+		for item in rows
+	):
 		return None
 	return app_workspace(row.name)
 
