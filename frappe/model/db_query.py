@@ -1145,6 +1145,9 @@ from {tables}
 			if not only_if_shared and self.shared and conditions:
 				conditions = f"(({conditions}) or ({self.get_share_condition()}))"
 
+			if mandatory := self.get_permission_query_conditions(mandatory=True):
+				conditions = f"({conditions}) and ({mandatory})" if conditions else f"({mandatory})"
+
 			return conditions
 
 		else:
@@ -1215,9 +1218,10 @@ from {tables}
 			self._fetch_shared_documents = True
 			self.match_filters.append(match_filters)
 
-	def get_permission_query_conditions(self) -> str:
+	def get_permission_query_conditions(self, *, mandatory: bool = False) -> str:
 		conditions = []
-		hooks = frappe.get_hooks("permission_query_conditions", {})
+		hook = "mandatory_permission_query_conditions" if mandatory else "permission_query_conditions"
+		hooks = frappe.get_hooks(hook, {})
 		condition_methods = hooks.get(self.doctype, []) + hooks.get("*", [])
 		for method in condition_methods:
 			if c := frappe.call(frappe.get_attr(method), self.user, doctype=self.doctype):
@@ -1236,7 +1240,9 @@ from {tables}
 				if clean_name != main_table_name:
 					active_child_tables.append(clean_name)
 
-		if permission_script_name := get_server_script_map().get("permission_query", {}).get(self.doctype):
+		if not mandatory and (
+			permission_script_name := get_server_script_map().get("permission_query", {}).get(self.doctype)
+		):
 			script = frappe.get_doc("Server Script", permission_script_name)
 			if condition := script.get_permission_query_conditions(
 				self.user, active_child_tables=active_child_tables

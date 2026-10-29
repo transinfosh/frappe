@@ -139,6 +139,8 @@ def has_permission(
 		if isinstance(doc, str | int):
 			# perf: Avoid loading child tables for perm checks
 			doc = frappe.get_lazy_doc(meta.name, doc)
+		if not has_mandatory_permissions(doc, ptype, user=user, debug=debug):
+			return False
 		perm = get_doc_permissions(doc, user=user, ptype=ptype, debug=debug).get(ptype)
 		if not perm:
 			debug and _debug_log(
@@ -477,6 +479,22 @@ def has_user_permission(doc, user=None, debug=False, *, ptype=None):
 		if not check_user_permission_on_link_fields(d):
 			return False
 
+	return True
+
+
+def has_mandatory_permissions(doc, ptype, user=None, debug=False) -> bool:
+	"""Apply opt-in boundaries that ownership and DocShare cannot override.
+
+	Hooks may deny with False or abstain with None/True; they never grant access.
+	Administrator retains the framework's existing unrestricted access.
+	"""
+	user = user or frappe.session.user
+	if user == "Administrator":
+		return True
+	hooks = frappe.get_hooks("mandatory_has_permission", {})
+	for method in hooks.get(doc.doctype, []) + hooks.get("*", []):
+		if frappe.call(method, doc=doc, ptype=ptype, user=user, debug=debug) is False:
+			return False
 	return True
 
 

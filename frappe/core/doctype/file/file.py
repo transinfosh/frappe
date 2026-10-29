@@ -1087,6 +1087,8 @@ def on_doctype_update():
 
 def has_permission(doc, ptype=None, user=None, debug=False):
 	user = user or frappe.session.user
+	if not frappe.permissions.has_mandatory_permissions(doc, ptype, user=user, debug=debug):
+		return False
 
 	if user == "Administrator":
 		return True
