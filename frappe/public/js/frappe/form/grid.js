@@ -3,6 +3,7 @@
 
 import GridRow from "./grid_row";
 import GridPagination from "./grid_pagination";
+import { get_fit_column_widths } from "./grid_column_width";
 
 const BULK_EDIT_CSV_HEADER_ROWS = 7; // title, labels, fieldnames, descriptions, 2 instructions, separator
 
@@ -604,13 +605,12 @@ export default class Grid {
 		let columns = this.visible_columns.map((col) => {
 			let df = col[0];
 			if (df.fieldname === fieldname) {
-				df.width = width;
-				// setup_columns renders from col[1]; keep it in sync for new rows.
+				// Keep layout in col[1], leaving DocField defaults and live properties intact.
 				col[1] = width;
 			}
 			return {
 				fieldname: df.fieldname,
-				width: this.get_column_width(df),
+				width: col[1],
 				sticky: df.sticky ? 1 : 0,
 			};
 		});
@@ -1550,6 +1550,10 @@ export default class Grid {
 		return this.clamp_column_width(width);
 	}
 
+	get_fit_column_widths(fieldnames) {
+		return get_fit_column_widths(this, fieldnames);
+	}
+
 	get_sticky_offset(fieldname) {
 		return this.sticky_offsets[fieldname] ?? 71;
 	}
@@ -1566,11 +1570,14 @@ export default class Grid {
 						frappe.meta.get_docfield(this.doctype, row.fieldname);
 
 					if (column) {
-						column.in_list_view = 1;
-						// migrate legacy `columns` (1-12) to px
-						column.width = cint(row.width) || LEGACY_COLSIZE_TO_PX[row.columns];
-						column.sticky = row.sticky;
-						return column;
+						// User layout must not overwrite the DocField defaults used by Reset.
+						return {
+							...column,
+							in_list_view: 1,
+							// migrate legacy `columns` (1-12) to px
+							width: cint(row.width) || LEGACY_COLSIZE_TO_PX[row.columns],
+							sticky: row.sticky,
+						};
 					}
 				})
 				.filter(Boolean);
@@ -1772,7 +1779,7 @@ export default class Grid {
 
 		if (this.user_defined_columns && this.user_defined_columns.length > 0) {
 			let field = this.user_defined_columns.find((d) => d.fieldname === fieldname);
-			if (field && Object.keys(field).includes(property)) {
+			if (field) {
 				field[property] = value;
 			}
 		}

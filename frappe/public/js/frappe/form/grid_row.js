@@ -418,6 +418,23 @@ export default class GridRow {
 			this.reset_user_settings_for_grid();
 			this.grid_settings_dialog.hide();
 		});
+
+		this.grid_settings_dialog.add_custom_action(
+			__("Fit Columns To Content"),
+			() => {
+				const widths = this.grid.get_fit_column_widths(
+					this.selected_columns_for_grid.map((column) => column.fieldname)
+				);
+				this.selected_columns_for_grid.forEach((column) => {
+					if (widths[column.fieldname] !== undefined) {
+						column.width = widths[column.fieldname];
+					}
+				});
+				this.render_selected_columns();
+			},
+			"grid-fit-columns",
+			__("Fit all loaded rows. Click Update to save.")
+		);
 	}
 
 	setup_columns_for_dialog() {
@@ -787,10 +804,15 @@ export default class GridRow {
 	}
 
 	get_column_docfield(fields, fieldname) {
-		const column_df = fields.find((field) => field?.fieldname === fieldname);
+		// Row copies can outlive a Reset; always take layout from the current grid.
+		const column_df =
+			this.grid.visible_columns?.find(([field]) => field.fieldname === fieldname)?.[0] ||
+			fields.find((field) => field?.fieldname === fieldname);
 		const row_df = this.docfields?.find((df) => df.fieldname === fieldname);
 
-		if (!column_df || !row_df || column_df === row_df) return column_df;
+		// Header/search rows share the base DocFields. Only data rows have their
+		// own copies to which user layout can be applied without changing defaults.
+		if (!this.doc || !column_df || !row_df || column_df === row_df) return column_df;
 
 		row_df.sticky = column_df.sticky;
 		row_df.in_list_view = column_df.in_list_view;

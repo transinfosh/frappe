@@ -1659,6 +1659,13 @@ class Engine:
 		return self.link_table_aliases[key]
 
 	def get_permission_conditions(self, doctype: str, table: Table) -> Criterion | None:
+		condition = self._get_permission_conditions(doctype, table)
+		mandatory = self.get_permission_query_conditions(doctype, table, mandatory=True)
+		if mandatory:
+			return Criterion.all(([condition] if condition is not None else []) + mandatory)
+		return condition
+
+	def _get_permission_conditions(self, doctype: str, table: Table) -> Criterion | None:
 		role_permissions = frappe.permissions.get_role_permissions(doctype, user=self.user)
 		has_role_permission = role_permissions.get("read") or role_permissions.get("select")
 
@@ -1707,14 +1714,15 @@ class Engine:
 		return list(set(tables))
 
 	def get_permission_query_conditions(
-		self, doctype: str | None = None, table: Table | None = None
+		self, doctype: str | None = None, table: Table | None = None, *, mandatory: bool = False
 	) -> list["Criterion"]:
 		"""Add permission query conditions from hooks and server scripts"""
 		from frappe.core.doctype.server_script.server_script_utils import get_server_script_map
 
 		doctype = doctype or self.permission_doctype
 		conditions = []
-		hooks = frappe.get_hooks("permission_query_conditions", {})
+		hook = "mandatory_permission_query_conditions" if mandatory else "permission_query_conditions"
+		hooks = frappe.get_hooks(hook, {})
 		condition_methods = hooks.get(doctype, []) + hooks.get("*", [])
 
 		for method in condition_methods:
@@ -1730,7 +1738,9 @@ class Engine:
 					active_child_tables.append(table_name)
 
 		# Get conditions from server scripts
-		if permission_script_name := get_server_script_map().get("permission_query", {}).get(doctype):
+		if not mandatory and (
+			permission_script_name := get_server_script_map().get("permission_query", {}).get(doctype)
+		):
 			script = frappe.get_doc("Server Script", permission_script_name)
 			if condition := script.get_permission_query_conditions(
 				self.user, active_child_tables=active_child_tables
