@@ -101,7 +101,10 @@ class PostgresExceptionUtil:
 
 	@staticmethod
 	def is_unique_key_violation(e):
-		return getattr(e, "pgcode", None) == UNIQUE_VIOLATION and "_key" in cstr(e.args[0])
+		return (
+			getattr(e, "pgcode", None) == UNIQUE_VIOLATION
+			and not PostgresDatabase.is_primary_key_violation(e)
+		)
 
 	@staticmethod
 	def is_duplicate_fieldname(e):
