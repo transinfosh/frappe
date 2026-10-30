@@ -690,7 +690,11 @@ class TestDockSiteLayer(DockTestCase):
 
 		duplicate = frappe.new_doc("Dock")
 		duplicate.app = APP
-		self.assertRaises(frappe.UniqueValidationError, duplicate.insert)
+		frappe.db.savepoint("duplicate_dock_layer")
+		try:
+			self.assertRaises(frappe.UniqueValidationError, duplicate.insert)
+		finally:
+			frappe.db.rollback(save_point="duplicate_dock_layer")
 
 
 class TestTheAppLayer(DockTestCase):
@@ -1835,6 +1839,7 @@ class TestTheFrameworksDock(IntegrationTestCase):
 
 	def test_the_walked_case_renders_the_same_dock(self):
 		"""Fifteen modules in, twelve named, three code-only never nameable at all."""
+		from frappe.modules.utils import get_module_app
 		from frappe.utils.modules import get_code_only_modules
 
 		frappe.set_user("Administrator")
@@ -1844,7 +1849,8 @@ class TestTheFrameworksDock(IntegrationTestCase):
 		self.assertEqual([name for name in resolved if name in self.TWELVE], self.TWELVE)
 
 		# the three the record cannot name, because they ship no navigation of their own
-		self.assertEqual(sorted(get_code_only_modules()), ["Core", "Custom", "Desk"])
+		framework_modules = [name for name in get_code_only_modules() if get_module_app(name) == "frappe"]
+		self.assertEqual(sorted(framework_modules), ["Core", "Custom", "Desk"])
 		self.assertFalse([name for name in resolved if name in get_code_only_modules()])
 
 
