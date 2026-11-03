@@ -6123,7 +6123,7 @@ msgstr "清除过滤条件"
 
 #: ui/src/components/GroupBy/GroupBy.vue:111
 msgid "Clear Grouping"
-msgstr ""
+msgstr "清除分组"
 
 #: frappe/public/js/frappe/form/controls/link.js:18
 msgid "Clear Link"
@@ -44234,3 +44234,110 @@ msgstr "PATH中未找到{}！执行备份需要此组件"
 msgid "← Back to upload files"
 msgstr "返回上传文件"
 
+
+
+msgid "Display Mode"
+msgstr "显示方式"
+
+
+msgid "Summary Groups"
+msgstr "汇总分组"
+
+
+msgid "Detail Groups"
+msgstr "明细分组"
+
+
+msgid "Keep records with collapsible groups and totals for all matching records."
+msgstr "保留明细，支持折叠分组，并汇总全部符合筛选条件的记录。"
+
+
+msgid "Show one aggregate result per group."
+msgstr "每组显示一行汇总结果。"
+
+
+msgid "Detail Groups: {0}"
+msgstr "明细分组：{0}"
+
+
+msgid "Detail grouping requires a standard parent DocType."
+msgstr "明细分组仅支持标准主表单据类型。"
+
+
+msgid "Remove child table columns before using detail grouping."
+msgstr "请先移除子表列，再使用明细分组。"
+
+
+msgid "Invalid grouping mode"
+msgstr "无效的分组模式"
+
+
+msgid "Group totals include all matching records. Load more to see remaining details."
+msgstr "分组小计包含全部符合筛选条件的记录。加载更多可查看其余明细。"
+
+
+msgid "{0} of {1} loaded"
+msgstr "已加载 {0} / {1} 条"
+
+
+msgid "Mixed currencies"
+msgstr "混合币种"
+
+
+msgid "Expand a group and load records before exporting visible details."
+msgstr "请先展开分组并加载记录，再导出可见明细。"
+
+msgid "Invalid detail grouping fields"
+msgstr "无效的明细分组字段"
+
+msgid "Select at least one grouping field."
+msgstr "请至少选择一个分组字段。"
+
+msgid "Grouping fields must not be repeated."
+msgstr "分组字段不能重复。"
+
+msgid "Fields are grouped from top to bottom. Move fields to change the hierarchy."
+msgstr "字段从上到下依次分组，移动字段可调整分组层级。"
+
+msgid "Add Grouping Level"
+msgstr "添加分组层级"
+
+msgid "Grouping Level {0}"
+msgstr "第 {0} 级分组"
+
+msgid "Move Up"
+msgstr "上移"
+
+msgid "Move Down"
+msgstr "下移"
+
+msgid "#"
+msgstr "#"
+
+msgctxt "Report View"
+msgid "Group"
+msgstr "分组"
+
+msgid "Detail Groups ({0})"
+msgstr "明细分组 ({0})"
+
+
+msgid "Field Details"
+msgstr "字段明细"
+
+
+msgctxt "Report View"
+msgid "Function"
+msgstr "汇总方式"
+
+
+msgid "Aggregate Field"
+msgstr "汇总字段"
+
+
+msgid "Freeze"
+msgstr "冻结"
+
+
+msgid "Unfreeze"
+msgstr "取消冻结"

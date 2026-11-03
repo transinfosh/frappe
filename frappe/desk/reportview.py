@@ -21,7 +21,16 @@ from frappe.model.utils import is_virtual_doctype
 from frappe.utils import add_user_info, cint, format_duration
 from frappe.utils.data import sbool
 
-DISALLOWED_PARAMS = ("cmd", "data", "ignore_permissions", "view", "user", "csrf_token", "join")
+DISALLOWED_PARAMS = (
+	"cmd",
+	"data",
+	"ignore_permissions",
+	"view",
+	"user",
+	"csrf_token",
+	"join",
+	"detail_group_by",
+)
 SUPPORTED_AGGREGATE_FUNCTIONS = ("count", "sum", "avg")
 DEFAULT_AGGREGATE_FIELDNAME = "_aggregate_column"
 _FIELDNAME_RE = re.compile(r"^[a-zA-Z0-9_]+$")
@@ -30,7 +39,30 @@ _FIELDNAME_RE = re.compile(r"^[a-zA-Z0-9_]+$")
 @frappe.whitelist()
 @frappe.read_only()
 def get():
+	detail_group_by = frappe.local.form_dict.get("detail_group_by")
 	args = get_form_params()
+	summary = None
+	if detail_group_by:
+		summary = get_detail_group_summary(args, detail_group_by)
+		args.distinct = True
+		# Stable tie-breaking is required when loading a group over several pages.
+		name_column = f"`tab{args.doctype}`.`name`"
+		args.order_by = f"{args.order_by}, {name_column} asc" if args.order_by else f"{name_column} asc"
+		# PostgreSQL DISTINCT requires sort expressions in SELECT. Keep them out of
+		# the visible-column summary, but retain deterministic order for pagination.
+		for term in (args.order_by or "").split(","):
+			sort_field = re.sub(r"\s+(asc|desc)\s*$", "", term.strip(), flags=re.I)
+			if not sort_field:
+				continue
+			_validate_group_by_field(sort_field, args.doctype)
+			sort_doctype, fieldname = parse_field(sort_field)
+			if sort_doctype not in (None, args.doctype):
+				raise_invalid_field(sort_field)
+			if fieldname not in get_permitted_fields(args.doctype, ignore_virtual=True):
+				raise_invalid_field(sort_field)
+			column = f"`tab{args.doctype}`.`{fieldname}`"
+			if column not in args.fields:
+				args.fields.append(column)
 	with_link_titles = sbool(args.pop("with_link_titles", False))
 
 	# If virtual doctype, get data from controller get_list method
@@ -38,12 +70,163 @@ def get():
 		controller = get_controller(args.doctype)
 		data = compress(frappe.call(controller.get_list, args=args, **args))
 	else:
-		data = compress(execute(**args), args=args)
+		records = execute_detail_group_records(args) if detail_group_by else execute(**args)
+		data = compress(records, args=args)
 
 	if with_link_titles:
 		send_compressed_link_titles(args, data)
 
+	if summary is not None and isinstance(data, dict):
+		data["detail_groups"] = summary
 	return data
+
+
+def execute_detail_group_records(args) -> list[dict]:
+	"""Apply validated ordering after constructing DISTINCT, which QB otherwise drops on PostgreSQL."""
+	from pypika import Order
+
+	query_args = dict(args)
+	order_by = query_args.pop("order_by", None)
+	query = execute(**query_args, order_by=None, run=False)
+	for term in (order_by or "").split(","):
+		if not term.strip():
+			continue
+		sort_field = re.sub(r"\s+(asc|desc)\s*$", "", term.strip(), flags=re.I)
+		_field_doctype, fieldname = parse_field(sort_field)
+		direction = Order.desc if re.search(r"\s+desc\s*$", term, flags=re.I) else Order.asc
+		query = query.orderby(frappe.qb.DocType(args.doctype)[fieldname], order=direction)
+	with_comments = sbool(args.with_comment_count) and frappe.db.has_column(args.doctype, "_comments")
+	if with_comments:
+		query = query.select(frappe.qb.DocType(args.doctype)._comments)
+	rows = query.run(as_dict=True)
+	if with_comments:
+		DatabaseQuery(args.doctype)._add_comment_count(rows)
+	return rows
+
+
+def get_detail_group_fields(group_by: str | list[str], doctype: str) -> list[str]:
+	"""Accept legacy single-field requests and ordered multi-level field lists."""
+	if isinstance(group_by, str) and group_by.lstrip().startswith("["):
+		try:
+			group_by = json.loads(group_by)
+		except ValueError, TypeError:
+			frappe.throw(_("Invalid detail grouping fields"), frappe.DataError)
+	raw_fields = group_by if isinstance(group_by, list) else [group_by]
+	if not raw_fields:
+		frappe.throw(_("Select at least one grouping field."), frappe.DataError)
+	fields = []
+	for raw in raw_fields:
+		_validate_group_by_field(raw, doctype)
+		field_doctype, fieldname = parse_field(raw)
+		if field_doctype not in (None, doctype):
+			raise_invalid_field(raw)
+		if fieldname in fields:
+			frappe.throw(_("Grouping fields must not be repeated."), frappe.DataError)
+		fields.append(fieldname)
+	return fields
+
+
+def get_detail_group_summary(args, group_by: str | list[str]) -> dict:
+	"""Aggregate each ordered prefix before pagination, deduplicating filter joins."""
+	from frappe.query_builder.functions import Coalesce, Count, Min, Sum
+
+	meta = frappe.get_meta(args.doctype)
+	if meta.is_virtual or meta.istable or args.group_by:
+		frappe.throw(_("Detail grouping requires a standard parent DocType."))
+	group_fields = get_detail_group_fields(group_by, args.doctype)
+	permitted = set(get_permitted_fields(args.doctype, ignore_virtual=True))
+	permitted.difference_update(df.fieldname for df in meta.get_masked_fields())
+	for fieldname in group_fields:
+		df = meta.get_field(fieldname)
+		if fieldname not in permitted or (df and (df.report_hide or df.is_virtual)):
+			raise_invalid_field(fieldname)
+
+	fields = ["name", *group_fields]
+	sum_fields = []
+	currency_fields = {}
+	for raw in args.fields:
+		field_doctype, fieldname = parse_field(raw)
+		if field_doctype not in (None, args.doctype):
+			frappe.throw(_("Remove child table columns before using detail grouping."))
+		df = meta.get_field(fieldname)
+		if (
+			df
+			and fieldname in permitted
+			and fieldname not in group_fields
+			and not df.report_hide
+			and not df.is_virtual
+			and df.fieldtype in ("Int", "Float", "Currency", "Duration")
+		):
+			sum_fields.append(fieldname)
+			fields.append(fieldname)
+			# A currency total is valid only when the entire group has one currency.
+			if df.fieldtype == "Currency" and df.options and meta.has_field(df.options):
+				if df.options not in permitted:
+					sum_fields.remove(fieldname)
+					continue
+				currency_fields[fieldname] = df.options
+				fields.append(df.options)
+
+	query = execute(
+		doctype=args.doctype,
+		fields=list(dict.fromkeys(fields)),
+		filters=args.filters,
+		or_filters=args.or_filters,
+		order_by=None,
+		distinct=True,
+		limit_page_length=0,
+		run=False,
+	).as_("detail_records")
+	group_columns = []
+	for fieldname in group_fields:
+		df = meta.get_field(fieldname)
+		column = query[fieldname]
+		if (
+			df and df.fieldtype in ("Data", "Link", "Dynamic Link", "Select", "Autocomplete")
+		) or fieldname in ("name", "owner", "modified_by"):
+			column = Coalesce(column, "")
+		group_columns.append(column)
+
+	groups = []
+	currency_sources = list(dict.fromkeys(currency_fields.values()))
+	for depth in range(1, len(group_fields) + 1):
+		columns = group_columns[:depth]
+		summary_query = frappe.qb.from_(query).select(
+			*(column.as_(fieldname) for column, fieldname in zip(columns, group_fields, strict=False)),
+			Count("*").as_("_count"),
+		)
+		for fieldname in sum_fields:
+			summary_query = summary_query.select(Sum(query[fieldname]).as_(fieldname))
+		for index, currency_field in enumerate(currency_sources):
+			summary_query = summary_query.select(
+				Count(query[currency_field]).distinct().as_(f"_currencies_{index}"),
+				Min(query[currency_field]).as_(f"_currency_{index}"),
+				Count(query[currency_field]).as_(f"_currency_count_{index}"),
+			)
+		level_groups = summary_query.groupby(*columns).orderby(*columns).run(as_dict=True)
+		for group in level_groups:
+			# Capture the complete ancestor path before adding formatting context.
+			path = [group[fieldname] for fieldname in group_fields[:depth]]
+			for index, currency_field in enumerate(currency_sources):
+				currency = group.pop(f"_currency_{index}")
+				currency_count = group.pop(f"_currencies_{index}")
+				filled_count = group.pop(f"_currency_count_{index}")
+				if currency_field not in group_fields[:depth]:
+					group[currency_field] = currency
+				if currency_count != 1 or filled_count != group["_count"]:
+					for fieldname, source in currency_fields.items():
+						if source == currency_field:
+							group[fieldname] = None
+			if len(group_fields) > 1:
+				group["_level"] = depth - 1
+				group["_path"] = path
+		groups.extend(level_groups)
+	return {
+		"fieldname": group_fields[0],
+		"fieldnames": group_fields,
+		"sum_fields": sum_fields,
+		"groups": groups,
+	}
 
 
 def send_compressed_link_titles(args, data):
@@ -249,6 +432,12 @@ def _validate_group_by_field(raw: str, doctype: str):
 
 
 def _validate_group_by_args(group_by: dict, doctype: str):
+	mode = group_by.get("mode", "summary")
+	if mode not in ("summary", "detail"):
+		frappe.throw(_("Invalid grouping mode"), frappe.DataError)
+	if mode == "detail":
+		get_detail_group_fields(group_by.get("group_by_fields", group_by.get("group_by", "")), doctype)
+		return
 	raw_func = group_by.get("aggregate_function")
 	if not isinstance(raw_func, str):
 		frappe.throw(_("Invalid aggregate function: {0}").format(raw_func), frappe.DataError)
@@ -867,7 +1056,7 @@ def get_stats(stats: str, doctype: str, filters: str | None = None):
 
 	try:
 		db_columns = frappe.db.get_table_columns(doctype)
-	except (frappe.db.InternalError, frappe.db.ProgrammingError):
+	except frappe.db.InternalError, frappe.db.ProgrammingError:
 		# raised when _user_tags column is added on the fly
 		# raised if its a virtual doctype
 		db_columns = []

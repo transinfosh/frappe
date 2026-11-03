@@ -648,7 +648,8 @@ input.list-header-checkbox {
 		margin-top: 3px;
 	}
 
-	.filter-selector .btn-group {
+	.filter-selector .btn-group,
+	.group-by-selector {
 		margin: var(--margin-xs);
 
 		.filter-label {
