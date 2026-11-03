@@ -148,8 +148,48 @@
 	}
 }
 
-.group-by-button {
+.report-view .page-form .filter-section {
+	align-items: stretch;
+
+	> .filter-selector,
+	> .sort-selector {
+		display: flex;
+	}
+}
+
+.group-by-selector {
 	margin: 5px;
+	align-items: stretch;
+	border-radius: var(--radius);
+	overflow: hidden;
+
+	&:focus-within {
+		box-shadow: var(--focus-default);
+	}
+
+	> .btn {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		margin: 0;
+		// Draw one rounded focus ring around the whole group.
+		box-shadow: none !important;
+	}
+
+	.group-by-button {
+		gap: var(--margin-xs);
+	}
+
+	// Keep the separator outside the adjacent button, including when it gains focus.
+	> .btn:not(:first-child) {
+		margin-left: 0;
+		border-left: 1px solid var(--btn-group-border-color);
+	}
+
+	&:not(.has-grouping) > .btn.group-by-button {
+		border-top-right-radius: var(--radius);
+		border-bottom-right-radius: var(--radius);
+	}
 }
 
 .btn {
@@ -385,4 +425,86 @@
 	display: flex;
 	flex-wrap: wrap;
 	width: 100%;
+}
+
+.report-detail-groups {
+	.report-group-covered-cell {
+		display: none;
+	}
+
+	.report-group-span-cell > .dt-cell__content {
+		width: var(--report-group-span-width);
+		text-align: start;
+	}
+
+	.report-group-heading {
+		display: flex;
+		align-items: center;
+		gap: var(--margin-sm);
+		min-width: 0;
+		overflow: hidden;
+
+		> span,
+		> .report-group-load {
+			flex-shrink: 0;
+		}
+	}
+
+	.report-group-toggle {
+		display: flex;
+		align-items: center;
+		min-width: 0;
+		gap: var(--margin-xs);
+
+		strong {
+			overflow: hidden;
+			text-overflow: ellipsis;
+			white-space: nowrap;
+		}
+
+		svg {
+			flex-shrink: 0;
+		}
+
+		border: 0;
+		background: transparent;
+		color: var(--text-color);
+		padding: 0;
+		cursor: pointer;
+	}
+
+	.dt-row:has(.report-group-heading) {
+		.dt-cell {
+			background: var(--subtle-fg);
+		}
+
+		input[type="checkbox"] {
+			visibility: hidden;
+		}
+	}
+}
+
+.detail-group-settings {
+	.detail-group-level {
+		display: flex;
+		align-items: center;
+		gap: var(--margin-xs);
+		margin-bottom: var(--margin-sm);
+
+		.detail-group-index {
+			flex-shrink: 0;
+			min-width: 1.5em;
+			text-align: center;
+		}
+
+		.detail-group-field {
+			flex: 1;
+			min-width: 100px;
+		}
+	}
+}
+
+.group-by-box .groupby-actions {
+	align-self: flex-end;
+	margin-bottom: 1rem;
 }

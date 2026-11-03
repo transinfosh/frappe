@@ -85,6 +85,8 @@ frappe.ui.GroupBy = class {
 		this.aggregate_on_html = ``;
 		this.group_by_select = this.wrapper.find("select.group-by");
 		this.group_by_field && this.group_by_select.val(this.group_by_field);
+		this.group_mode_select = this.wrapper.find(".group-mode");
+		this.group_mode_select.val(this.mode || "summary");
 		this.aggregate_function_select = this.wrapper.find("select.aggregate-function");
 		this.aggregate_on_select = this.wrapper.find("select.aggregate-on");
 		this.remove_group_by_button = this.wrapper.find(".remove-group-by");
@@ -100,10 +102,123 @@ frappe.ui.GroupBy = class {
 		this.toggle_aggregate_on_field();
 		this.aggregate_on && this.aggregate_on_select.val(this.aggregate_on_field);
 
+		this.update_mode_controls();
 		this.set_group_by_events();
 	}
 
+	update_mode_controls() {
+		const detail = this.mode === "detail";
+		this.wrapper.find(".list_groupby").toggle(!detail);
+		this.wrapper.find(".detail-group-settings").toggle(detail);
+		if (detail) {
+			this.detail_group_fields ||=
+				this.group_by_doctype === this.doctype && this.group_by_field
+					? [this.group_by_field]
+					: [];
+			this.render_detail_group_fields();
+		}
+		this.aggregate_function_select.parent().toggle(!detail);
+		this.toggle_aggregate_on_field_display(!detail && this.aggregate_function !== "count");
+		this.group_by_select.find("option[data-doctype]").each((_, option) => {
+			$(option).prop("disabled", detail && option.dataset.doctype !== this.doctype);
+		});
+	}
+
+	render_detail_group_fields() {
+		const container = this.wrapper.find(".detail-group-levels").empty();
+		const fields = this.detail_group_fields?.length ? this.detail_group_fields : [""];
+		fields.forEach((fieldname, index) => {
+			const row = $('<div class="detail-group-level"></div>').appendTo(container);
+			const label = __("Grouping Level {0}", [index + 1]);
+			$('<span class="detail-group-index small text-muted"></span>')
+				.text(index + 1)
+				.appendTo(row);
+			const select = $('<select class="detail-group-field form-control input-xs"></select>')
+				.attr("aria-label", label)
+				.appendTo(row);
+			this.group_by_select.find("option").each((_, option) => {
+				if (option.value && option.dataset.doctype !== this.doctype) return;
+				const clone = $(option).clone().prop("selected", false);
+				clone.prop(
+					"disabled",
+					Boolean(
+						option.value && option.value !== fieldname && fields.includes(option.value)
+					)
+				);
+				clone.appendTo(select);
+			});
+			select.val(fieldname).on("change", () => {
+				this.detail_group_fields = [...fields];
+				this.detail_group_fields[index] = select.val();
+				this.apply_detail_group_fields();
+			});
+			for (const [action, text, title] of [
+				["up", "↑", __("Move Up")],
+				["down", "↓", __("Move Down")],
+				["remove", "×", __("Remove")],
+			]) {
+				$('<button type="button" class="btn btn-default btn-xs"></button>')
+					.addClass(`detail-group-${action}`)
+					.text(text)
+					.attr({ title, "aria-label": title })
+					.prop(
+						"disabled",
+						(action === "up" && index === 0) ||
+							(action === "down" && index === fields.length - 1)
+					)
+					.appendTo(row)
+					.on("click", () => {
+						this.detail_group_fields = [...fields];
+						if (action === "remove") this.detail_group_fields.splice(index, 1);
+						else {
+							const target = action === "up" ? index - 1 : index + 1;
+							[this.detail_group_fields[index], this.detail_group_fields[target]] = [
+								this.detail_group_fields[target],
+								this.detail_group_fields[index],
+							];
+						}
+						this.apply_detail_group_fields();
+					});
+			}
+		});
+	}
+
+	apply_detail_group_fields() {
+		this.detail_group_fields = (this.detail_group_fields || []).filter(Boolean);
+		this.group_by_field = this.detail_group_fields[0] || null;
+		this.group_by_doctype = this.doctype;
+		this.group_by = this.group_by_field
+			? "`tab" + this.doctype + "`.`" + this.group_by_field + "`"
+			: null;
+		this.report_view.group_by = null;
+		this.report_view.start = 0;
+		this.report_view.detail_group_generation =
+			(this.report_view.detail_group_generation || 0) + 1;
+		this.report_view.last_args = null;
+		this.render_detail_group_fields();
+		this.update_group_by_button();
+		this.report_view.refresh();
+	}
+
 	set_group_by_events() {
+		this.wrapper.find(".add-detail-group-level").on("click", () => {
+			this.detail_group_fields = [
+				...(this.detail_group_fields?.length ? this.detail_group_fields : [""]),
+				"",
+			];
+			this.render_detail_group_fields();
+		});
+		this.group_mode_select.on("change", () => {
+			this.mode = this.group_mode_select.val();
+			this.update_mode_controls();
+			if (this.mode === "detail") {
+				this.restore_detail_fields();
+				this.apply_detail_group_fields();
+			} else {
+				this.group_by_select.val(this.group_by_field || "");
+				this.apply_group_by_and_refresh();
+			}
+		});
 		// try running on change
 		this.group_by_select.on("change", () => {
 			this.group_by_field = this.group_by_select.val();
@@ -178,7 +293,15 @@ frappe.ui.GroupBy = class {
 	get_settings() {
 		if (this.group_by) {
 			return {
+				mode: this.mode || "summary",
 				group_by: this.group_by,
+				...(this.mode === "detail"
+					? {
+							group_by_fields: (this.detail_group_fields || [this.group_by_field])
+								.filter(Boolean)
+								.map((field) => "`tab" + this.doctype + "`.`" + field + "`"),
+					  }
+					: {}),
 				aggregate_function: this.aggregate_function,
 				aggregate_on: this.aggregate_on,
 			};
@@ -188,6 +311,7 @@ frappe.ui.GroupBy = class {
 	}
 
 	apply_settings(settings) {
+		this.mode = settings.mode || "summary";
 		let get_fieldname = (name) => name.split(".")[1].replace(/`/g, "");
 		let get_doctype = (name) => name.split(".")[0].replace(/`/g, "").replace(/^tab/, "");
 
@@ -204,6 +328,11 @@ frappe.ui.GroupBy = class {
 		// Extract fieldname from `tabdoctype`.`fieldname`
 		this.group_by_field = get_fieldname(settings.group_by);
 		this.group_by_doctype = get_doctype(settings.group_by);
+		if (this.mode === "detail") {
+			this.detail_group_fields = (settings.group_by_fields || [settings.group_by]).map(
+				(field) => (field.startsWith("`tab") ? get_fieldname(field) : field)
+			);
+		}
 
 		this.aggregate_function = settings.aggregate_function;
 
@@ -226,23 +355,59 @@ frappe.ui.GroupBy = class {
 	}
 
 	make_group_by_button() {
-		this.page.wrapper.find(".sort-selector").before(
-			$(`<div class="group-by-selector">
-				<button class="btn btn-default btn-sm group-by-button ellipsis">
-					<span class="group-by-icon button-icon">
-						${frappe.utils.icon("folder")}
-					</span>
-					<span class="button-label hidden-xs">
-						${__("Add Group")}
-					</span>
-				</button>
-			</div>`)
-		);
+		this.$button_group = $(`<div class="group-by-selector btn-group">
+			<button type="button" class="btn btn-default btn-sm group-by-button">
+				<span class="group-by-icon button-icon">${frappe.utils.icon("layers")}</span>
+				<span class="button-label"></span>
+			</button>
+			<button type="button" class="btn btn-default btn-sm group-by-fold-toggle" style="display: none"></button>
+			<button type="button" class="btn btn-default btn-sm group-by-clear" style="display: none">${frappe.utils.icon(
+				"x",
+				"sm"
+			)}</button>
+		</div>`);
+		this.page.wrapper.find(".sort-selector").before(this.$button_group);
+		this.group_by_button = this.$button_group.find(".group-by-button");
+		this.$clear_button = this.$button_group
+			.find(".group-by-clear")
+			.attr({ title: __("Clear Grouping"), "aria-label": __("Clear Grouping") })
+			.on("click", () => this.remove_group_by());
+		this.$fold_button = this.$button_group.find(".group-by-fold-toggle").on("click", () => {
+			const view = this.report_view;
+			const collapse = this.$fold_button.attr("data-action") === "collapse";
+			view.detail_collapsed_groups = new Set(
+				collapse
+					? (view.detail_group_summary?.groups || []).map((group) =>
+							view.detail_group_key(view.detail_group_path(group))
+					  )
+					: []
+			);
+			view.render();
+		});
+		this.update_group_by_button();
+	}
 
-		this.group_by_button = this.page.wrapper.find(".group-by-button");
+	restore_detail_fields() {
+		if (this.original_fields) {
+			this.report_view.fields = this.original_fields;
+			this.original_fields = null;
+		} else if (this.report_view.fields.some(([field]) => field === "_aggregate_column")) {
+			// Saved legacy summary reports may only contain the aggregate columns.
+			this.report_view.fields = [
+				["name", this.doctype],
+				["docstatus", this.doctype],
+			];
+			this.report_view.set_default_fields();
+		}
 	}
 
 	apply_group_by() {
+		if (!this.group_by_field) return false;
+		if (this.mode === "detail") {
+			if (this.group_by_doctype !== this.doctype) return false;
+			this.group_by = "`tab" + this.doctype + "`.`" + this.group_by_field + "`";
+			return true;
+		}
 		if (
 			this.group_by_doctype &&
 			this.aggregate_on_doctype &&
@@ -279,11 +444,35 @@ frappe.ui.GroupBy = class {
 
 	apply_group_by_and_refresh() {
 		if (this.apply_group_by()) {
+			this.update_group_by_button();
 			this.report_view.refresh();
 		}
 	}
 
 	set_args(args) {
+		if (this.mode === "detail" && this.group_by) {
+			this.restore_detail_fields();
+			if (this.report_view.fields.some((f) => f[1] && f[1] !== this.doctype)) {
+				frappe.throw(__("Remove child table columns before using detail grouping."));
+			}
+			const fields = (this.detail_group_fields || [this.group_by_field]).filter(Boolean);
+			for (const fieldname of fields) {
+				if (
+					!this.report_view.fields.some(
+						([field, doctype]) =>
+							field === fieldname && (!doctype || doctype === this.doctype)
+					)
+				) {
+					this.report_view._add_field(fieldname, this.doctype);
+				}
+			}
+			args.fields = this.report_view.get_fields();
+			args.detail_group_by = fields.map(
+				(field) => "`tab" + this.doctype + "`.`" + field + "`"
+			);
+			this.report_view.group_by = null;
+			return;
+		}
 		if (this.aggregate_function && this.group_by) {
 			this.report_view.group_by = this.group_by;
 			this.report_view.sort_by = "_aggregate_column";
@@ -365,24 +554,29 @@ frappe.ui.GroupBy = class {
 		this.order_by = "";
 		this.group_by = null;
 		this.group_by_field = null;
+		this.detail_group_fields = [];
+		this.wrapper?.find(".detail-group-levels").empty();
 		this.report_view.group_by = null;
 		this.aggregate_function = "count";
 		this.aggregate_on = null;
 		this.aggregate_on_field = null;
-		this.group_by_select.val("");
-		this.aggregate_function_select.val("count");
-		this.aggregate_on_select.empty().val("");
-		this.aggregate_on_select.parent().hide();
-
-		// restore original fields
-		if (this.original_fields) {
-			this.report_view.fields = this.original_fields;
-		} else {
-			this.report_view.set_default_fields();
-		}
-
+		this.aggregate_on_doctype = null;
+		this.group_by_select?.val("");
+		this.aggregate_function_select?.val("count");
+		this.aggregate_on_select?.empty().val("");
+		this.aggregate_on_select?.parent().hide();
+		this.restore_detail_fields();
+		this.report_view.start = 0;
+		this.report_view.last_args = null;
+		this.report_view.detail_group_generation =
+			(this.report_view.detail_group_generation || 0) + 1;
+		this.report_view.detail_group_records = new Map();
+		this.report_view.detail_collapsed_groups = new Set();
 		this.report_view.setup_columns();
 		this.original_fields = null;
+		if (this.wrapper) this.update_mode_controls();
+		this.group_by_button.popover("hide");
+		this.update_group_by_button();
 		this.report_view.refresh();
 	}
 
@@ -436,26 +630,36 @@ frappe.ui.GroupBy = class {
 	}
 
 	update_group_by_button() {
-		const group_by_applied = Boolean(this.group_by_field);
-		const button_label = group_by_applied
-			? __("Grouped by <span style='font-weight:600;'>{0}</b>", [
-					this.get_group_by_field_label(),
-			  ])
-			: __("Add Group");
-		if (group_by_applied) {
-			this.group_by_button.find(".button-label").css("gap", "4px");
+		const active = Boolean(this.group_by);
+		const detail = active && this.mode === "detail";
+		const count = (this.detail_group_fields || [this.group_by_field]).filter(Boolean).length;
+		const label = !active
+			? __("Group", null, "Report View")
+			: detail
+			? __("Detail Groups")
+			: __("Summary Groups");
+		this.group_by_button.find(".button-label").text(label);
+		if (detail) {
+			$("<span class='filter-label group-by-count'></span>")
+				.text(count)
+				.appendTo(this.group_by_button.find(".button-label"));
 		}
-		this.group_by_button
-			.toggleClass("btn-default", !group_by_applied)
-			.toggleClass("btn-primary-light", group_by_applied);
-
-		this.group_by_button.find(".group-by-icon").toggleClass("active", group_by_applied);
-
-		this.group_by_button.find(".button-label").html(button_label);
-		this.group_by_button.attr(
-			"title",
-			`Results are Grouped by ${this.get_group_by_field_label()}`
-		);
+		const accessible_label = detail ? __("Detail Groups ({0})", [count]) : label;
+		this.group_by_button.attr({ title: accessible_label, "aria-label": accessible_label });
+		this.group_by_button.toggleClass("btn-default", !active);
+		this.group_by_button.toggleClass("btn-primary-light", active);
+		this.group_by_button.find(".group-by-icon").toggleClass("active", active);
+		this.$button_group
+			.toggleClass("has-grouping", active)
+			.toggleClass("is-detail-grouped", detail);
+		this.$clear_button.toggle(active);
+		this.$fold_button.toggle(detail);
+		const has_collapsed = (this.report_view.detail_collapsed_groups?.size || 0) > 0;
+		const action = has_collapsed ? "expand" : "collapse";
+		const title = has_collapsed ? __("Expand All") : __("Collapse All");
+		this.$fold_button
+			.attr({ title, "aria-label": title, "data-action": action })
+			.html(frappe.utils.icon(has_collapsed ? "unfold-vertical" : "fold-vertical", "sm"));
 	}
 
 	get_group_by_field_label() {
