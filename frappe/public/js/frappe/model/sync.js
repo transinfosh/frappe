@@ -176,6 +176,12 @@ Object.assign(frappe.model, {
 
 				// child table, override each row and append new rows if required
 				const incoming_names = new Set(updated_doc[fieldname].map((d) => d.name));
+				// Remove outgoing records before array positions are reassigned to retained rows.
+				for (const child of local_parent_doc[fieldname]) {
+					if (!incoming_names.has(child.name) && locals[child.doctype]) {
+						delete locals[child.doctype][child.name];
+					}
+				}
 				for (let i = 0; i < updated_doc[fieldname].length; i++) {
 					let updated_child_doc = updated_doc[fieldname][i];
 					let local_child_doc_in_parent = local_parent_doc[fieldname][i];
@@ -239,21 +245,7 @@ Object.assign(frappe.model, {
 					}
 				}
 
-				// remove extra rows
-				if (local_parent_doc[fieldname].length > updated_doc[fieldname].length) {
-					for (
-						let i = updated_doc[fieldname].length;
-						i < local_parent_doc[fieldname].length;
-						i++
-					) {
-						// clear from local
-						let d = local_parent_doc[fieldname][i];
-						if (locals[d.doctype] && locals[d.doctype][d.name]) {
-							delete locals[d.doctype][d.name];
-						}
-					}
-					local_parent_doc[fieldname].length = updated_doc[fieldname].length;
-				}
+				local_parent_doc[fieldname].length = updated_doc[fieldname].length;
 			} else {
 				// literal
 				local_parent_doc[fieldname] = updated_doc[fieldname];
