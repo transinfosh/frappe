@@ -51,6 +51,7 @@ export default class GridRowForm {
 							title: __("Close"),
 							css_class: "pull-right grid-collapse-row",
 						})}
+						<span class="row-edit-actions pull-right">
 						${frappe.ui.button.html({
 							label: __("Move"),
 							css_class: "pull-right grid-move-row hidden-xs",
@@ -73,6 +74,7 @@ export default class GridRowForm {
 							theme: "red",
 							css_class: "pull-right grid-delete-row",
 						})}
+						</span>
 					</span>
 				</div>
 			</div>
@@ -190,7 +192,7 @@ export default class GridRowForm {
 		});
 	}
 	toggle_add_delete_button_display($parent) {
-		$parent.find(".row-actions").toggle(this.row.grid.is_editable());
+		$parent.find(".row-edit-actions").toggle(this.row.grid.is_editable());
 	}
 	refresh_field(fieldname) {
 		const field = this.fields_dict[fieldname];
