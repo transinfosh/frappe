@@ -41,7 +41,8 @@
 					:style="(col.width ? `width: ${col.width}%; ` : '') + cell_style(df)"
 				>
 					<!-- Merged cell: image (if any) floats left, text lines stack -->
-					<div v-if="has_merge(col)" class="cell-merged">
+					<TableBarcode v-if="col.barcode_format" :column="col" :row="row" />
+					<div v-else-if="has_merge(col)" class="cell-merged">
 						<template v-if="image_merge(col)">
 							<img
 								v-if="cell_image(col, row)"
@@ -113,6 +114,7 @@
 import { computed, inject } from "vue";
 import { useColumnResize } from "../../composables/useColumnResize";
 import { useFieldFormat } from "../../composables/useFieldFormat";
+import TableBarcode from "./TableBarcode.vue";
 
 const props = defineProps(["df"]);
 const store = inject("$store");

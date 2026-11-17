@@ -1,4 +1,4 @@
-import { test, expect } from "../support";
+import { test, expect, TEST_USER } from "../support";
 
 const PRINT_FORMAT_API = "api/method/frappe.printing.doctype.print_format.print_format";
 
@@ -1124,3 +1124,78 @@ test.describe("Classic builder page — guards", () => {
 		await expect(page.locator(".msgprint")).toContainText("custom HTML format");
 	});
 });
+
+for (const [language, error_message] of [
+	["en", "Invalid value for QR"],
+	["zh", "QR 的编码内容无效"],
+]) {
+	test(`QR capacity overflow leaves the table cell blank (${language})`, async ({
+		page,
+		api,
+	}) => {
+		const { data: user } = await api.get_doc("User", TEST_USER);
+		try {
+			await api.update_doc("User", TEST_USER, { language });
+			const columns = [
+				{
+					fieldname: "is_primary",
+					fieldtype: "Check",
+					label: "QR",
+					barcode_format: "QR",
+					barcode_field: "email_id",
+				},
+				{ fieldname: "email_id", fieldtype: "Data", label: "Source" },
+			];
+			const fields = [
+				{
+					fieldtype: "Table",
+					fieldname: "email_ids",
+					options: "Contact Email",
+					table_columns: columns,
+				},
+			];
+			await api.insert_doc("Print Format", {
+				name: PF_NAME,
+				doc_type: "Contact",
+				print_format_builder_beta: 1,
+				format_data: JSON.stringify(
+					builder_layout([{ label: "QR capacity", columns: [{ fields }] }])
+				),
+			});
+			await open_builder(page, PF_NAME);
+			const capacity_error = page.waitForResponse(
+				(response) => response.url().includes("get_qr_code") && response.status() === 417
+			);
+			await page.evaluate(() => {
+				const store = frappe.pages["print-format-builder-beta"].builder.$component.$store;
+				store.preview_doc.value = {
+					doctype: "Contact",
+					email_ids: [
+						{ idx: 1, email_id: "a".repeat(2000), is_primary: 0 },
+						{ idx: 2, email_id: "ITEM-002", is_primary: 0 },
+						{ idx: 3, email_id: "中".repeat(1000), is_primary: 0 },
+						{ idx: 4, email_id: "a".repeat(2001), is_primary: 0 },
+					],
+				};
+			});
+			await capacity_error;
+			const table = section(page, "QR capacity");
+			const qr_cells = table.locator('tbody td[data-fieldname="is_primary"]');
+			await expect(qr_cells.nth(0)).toBeEmpty();
+			await expect(qr_cells.nth(2)).toBeEmpty();
+			await expect(qr_cells.nth(3)).toBeEmpty();
+			await expect(table.getByText(error_message, { exact: true })).toHaveCount(0);
+			await expect(table.getByText("ITEM-002", { exact: true })).toBeVisible();
+			await expect(table.locator('img[src^="data:image/svg+xml;base64,"]')).toHaveCount(1);
+			await expect(page.locator(".modal.show")).toHaveCount(0);
+			await page.evaluate(() => {
+				const store = frappe.pages["print-format-builder-beta"].builder.$component.$store;
+				store.preview_doc.value.email_ids[0].email_id = "ITEM-001";
+			});
+			await expect(table.getByText(error_message, { exact: true })).toHaveCount(0);
+			await expect(table.locator('img[src^="data:image/svg+xml;base64,"]')).toHaveCount(2);
+		} finally {
+			await api.update_doc("User", TEST_USER, { language: user.language });
+		}
+	});
+}

@@ -77,7 +77,17 @@
 				{%- set _words = ((row.get(column.fieldname) or "")|string|striptags).split() -%}
 				{%- set _td_style = _cell_style ~ (";overflow-wrap:anywhere" if _words and (_words|map("length")|max) > 20 else "") -%}
 				<td class="column-value{% if _merged %} column-value--merged{% endif %}" width="{{ column.width }}%"{% if _td_style %} style="{{ _td_style|e }}"{% endif %} {{ field_attributes(column) }}>
-					{%- if _merged -%}
+					{%- if column.barcode_format -%}
+						{%- set _bc = (column.get('_barcode_cells') or {}).get(row.idx|string) -%}
+						{% if _bc %}
+							{% if _bc.error %}{{ _bc.error|e }}
+							{% elif column.barcode_format == 'QR' %}
+							<img src="{{ _bc.qr|e }}" alt="QR" style="width:{{ column.barcode_width|int }}px;max-width:100%">
+							{% else %}
+							<div style="display:inline-block;width:{{ column.barcode_width|int }}px;max-width:100%"><svg data-barcode-value="{{ _bc.value|e }}" data-options='{{ {"format": column.barcode_format, "displayValue": column.barcode_show_text != False, "height": 40, "margin": 10}|tojson|forceescape }}'></svg></div>
+							{% endif %}
+						{% endif %}
+					{%- elif _merged -%}
 						{# Merged cell: an image field (if any) floats left, the rest stack as text lines (first = primary). #}
 						{%- set ns = namespace(img_fn=None, first_txt="") -%}
 						{%- for mf in _merged -%}

@@ -170,8 +170,13 @@ def get_qr_code(value: str) -> str:
 
 	from pyqrcode import create as qrcreate
 
+	try:
+		qr = qrcreate(value)
+	except ValueError as error:
+		raise frappe.ValidationError(_("Invalid value for {0}").format("QR")) from error
+
 	stream = io.BytesIO()
-	qrcreate(value).svg(stream, scale=5, quiet_zone=1)
+	qr.svg(stream, scale=5, quiet_zone=1)
 	return "data:image/svg+xml;base64," + base64.b64encode(stream.getvalue()).decode()
 
 
@@ -1050,6 +1055,10 @@ class PrintFormatGenerator:
 					col
 					for col in df["table_columns"]
 					if self.has_field_access(child, child_meta, col.get("fieldname"))
+					and (
+						not col.get("barcode_format")
+						or self.has_field_access(child, child_meta, col.get("barcode_field"))
+					)
 				]
 				for col in df["table_columns"]:
 					if col.get("merged_fields"):
@@ -1079,7 +1088,14 @@ class PrintFormatGenerator:
 					if (
 						rows
 						and col.get("fieldname") != "idx"
-						and not column_has_value(rows, col.get("fieldname"), frappe._dict(col))
+						and not (
+							any(
+								row.get(col.get("barcode_field") or col.get("fieldname")) not in (None, "")
+								for row in rows
+							)
+							if col.get("barcode_format")
+							else column_has_value(rows, col.get("fieldname"), frappe._dict(col))
+						)
 					):
 						continue
 					kept.append(col)
@@ -1129,6 +1145,46 @@ class PrintFormatGenerator:
 		self.prepare_date_format(df)
 		self.filter_conditional_rows(df)
 		self.prepare_html(df)
+		self.prepare_table_barcodes(df)
+
+	def prepare_table_barcodes(self, df):
+		"""Encode row values without changing either the source or the destination field."""
+		if df.get("fieldtype") != "Table":
+			return
+		rows = df.get("_rows") if df.get("_rows") is not None else self.doc.get(df.get("fieldname"))
+		for col in df.get("table_columns") or []:
+			col.pop("_barcode_cells", None)
+			if not (barcode_format := col.get("barcode_format")):
+				continue
+			if barcode_format not in ("QR", "CODE128", "CODE39"):
+				frappe.throw(_("Invalid barcode format"), frappe.ValidationError)
+			col["barcode_width"] = max(40, min(300, cint(col.get("barcode_width")) or 100))
+			source = col.get("barcode_field") or col.get("fieldname")
+			col["_barcode_cells"] = cells = {}
+			for row in rows or []:
+				if source != "idx" and not row.meta.get_field(source):
+					continue
+				if not self.has_field_access(row, row.meta, source):
+					continue
+				raw = row.get(source)
+				if raw is None or raw == "":
+					continue
+				value = str(raw)
+				if barcode_format == "QR" and len(value) > 2000:
+					continue
+				cell = cells[str(row.idx)] = {"value": value}
+				invalid = len(value) > 2000
+				if barcode_format == "CODE39":
+					invalid = invalid or not re.fullmatch(r"[A-Z0-9 .$/+%\-]+", value)
+				elif barcode_format == "CODE128":
+					invalid = invalid or not re.fullmatch(r"[\x20-\x7e]+", value)
+				if invalid:
+					cell["error"] = _("Invalid value for {0}").format(barcode_format)
+				elif barcode_format == "QR":
+					try:
+						cell["qr"] = get_qr_code(value)
+					except frappe.ValidationError:
+						del cells[str(row.idx)]
 
 	def set_field_renderers(self, layout):
 		eval_locals = condition_locals(self.doc, self.print_settings)

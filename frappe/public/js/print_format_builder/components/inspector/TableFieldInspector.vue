@@ -103,7 +103,7 @@
 											? 'subtle'
 											: 'ghost'
 									"
-									:title="__('Merge fields')"
+									:title="__('Column settings')"
 									@click="expanded_col = expanded_col === ci ? null : ci"
 									v-html="frappe.utils.icon('settings-2', 'xs')"
 								></button>
@@ -122,6 +122,45 @@
 							<!-- Per-column merged-fields editor: reuses inspector primitives -->
 							<div v-if="expanded_col === ci" class="pfb-col-editor">
 								<div class="pfb-insp-section-body">
+									<DropdownRow
+										:label="__('Display as')"
+										:model-value="col.barcode_format || ''"
+										:options="barcode_formats"
+										@update:model-value="
+											(v) => set_prop(col, 'barcode_format', v, '')
+										"
+									/>
+									<template v-if="col.barcode_format">
+										<DropdownRow
+											:label="__('Value from')"
+											:model-value="col.barcode_field || col.fieldname"
+											:options="to_field_opts(child_value_fields)"
+											@update:model-value="(v) => (col.barcode_field = v)"
+										/>
+										<StepperRow
+											:label="__('Barcode width')"
+											:model-value="col.barcode_width || 100"
+											:min="40"
+											:max="300"
+											:step="10"
+											unit="px"
+											@update:model-value="
+												(v) =>
+													(col.barcode_width = Math.max(
+														40,
+														Math.min(300, parseInt(v) || 100)
+													))
+											"
+										/>
+										<ToggleRow
+											v-if="col.barcode_format !== 'QR'"
+											:label="__('Value text')"
+											:model-value="col.barcode_show_text !== false"
+											@update:model-value="
+												(v) => (col.barcode_show_text = v)
+											"
+										/>
+									</template>
 									<StepperRow
 										:label="__('Width')"
 										:model-value="col.width"
@@ -131,7 +170,7 @@
 										@update:model-value="(v) => set_width(col, v)"
 									/>
 									<DropdownRow
-										v-if="is_date_field(col)"
+										v-if="!col.barcode_format && is_date_field(col)"
 										:label="__('Date format')"
 										:options="date_format_opts(column_sample(col))"
 										:model-value="col.date_format || ''"
@@ -141,7 +180,7 @@
 									/>
 								</div>
 								<draggable
-									v-if="col.merged_fields?.length"
+									v-if="!col.barcode_format && col.merged_fields?.length"
 									:list="col.merged_fields"
 									handle=".pfb-merge-drag"
 									:animation="150"
@@ -201,7 +240,10 @@
 										</div>
 									</template>
 								</draggable>
-								<div class="pfb-col-add-row" v-if="merge_field_opts(col).length">
+								<div
+									class="pfb-col-add-row"
+									v-if="!col.barcode_format && merge_field_opts(col).length"
+								>
 									<Autocomplete
 										:options="merge_field_opts(col)"
 										:placeholder="__('Add field...')"
@@ -209,7 +251,11 @@
 									/>
 								</div>
 								<div
-									v-if="col.merged_fields && col.merged_fields.length"
+									v-if="
+										!col.barcode_format &&
+										col.merged_fields &&
+										col.merged_fields.length
+									"
 									class="pfb-merge-direction"
 								>
 									<SegmentedRow
@@ -280,6 +326,7 @@ import Autocomplete from "../../../vue-components/Autocomplete.vue";
 import LabelField from "./LabelField.vue";
 import DropdownRow from "./DropdownRow.vue";
 import TextRow from "./TextRow.vue";
+import ToggleRow from "./ToggleRow.vue";
 import SegmentedRow from "./SegmentedRow.vue";
 import InspectorSection from "./InspectorSection.vue";
 import StepperRow from "./StepperRow.vue";
@@ -292,6 +339,13 @@ import { is_merge_image } from "../../fieldtypes";
 import { clamp_column_width, date_format_opts, is_date_field, set_prop } from "../../utils";
 
 const { selected_field, preview_doc, set_field_prop } = useSelectedField();
+
+const barcode_formats = [
+	{ value: "", label: __("Text") },
+	{ value: "QR", label: __("QR Code") },
+	{ value: "CODE128", label: "CODE128" },
+	{ value: "CODE39", label: "CODE39" },
+];
 
 let table_style = computed(() => selected_field.value?.table_style ?? "lined");
 let table_bordered = computed(() => selected_field.value?.table_bordered ?? true);

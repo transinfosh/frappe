@@ -730,7 +730,9 @@ class TestApiV2CreateFieldLevelRead(FrappeAPITestCase):
 		self.sent = []
 		send = patch(
 			"frappe.integrations.doctype.webhook.webhook.requests.request",
-			side_effect=lambda **kwargs: self.sent.append(json.loads(kwargs["data"])) or MagicMock(),
+			side_effect=lambda **kwargs: (
+				self.sent.append(json.loads(kwargs["data"])) or MagicMock(text="{}", status_code=200)
+			),
 		)
 		send.start()
 		self.addCleanup(send.stop)

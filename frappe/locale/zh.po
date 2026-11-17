@@ -6653,7 +6653,7 @@ msgstr ""
 
 #: frappe/public/js/print_format_builder/components/inspector/RepeaterFieldInspector.vue:45
 msgid "Column settings"
-msgstr ""
+msgstr "列设置"
 
 #: frappe/core/doctype/data_import/data_import.js:2499
 msgid "Column warnings"
@@ -18022,7 +18022,7 @@ msgstr "用户名或密码错误"
 #: frappe/public/js/print_format_builder/components/editor/FieldPreviewBarcode.vue:17
 #, python-brace-format
 msgid "Invalid value for {0}"
-msgstr ""
+msgstr "{0} 的编码内容无效"
 
 #: frappe/model/naming.py:174
 #, python-brace-format
@@ -38537,7 +38537,7 @@ msgstr "{0}不能是列表值"
 
 #: frappe/public/js/print_format_builder/components/inspector/BarcodeRows.vue:4
 msgid "Value from"
-msgstr ""
+msgstr "内容来源"
 
 #. Description of the 'Due Date Based On' (Select) field in DocType 'Assignment
 #. Rule'
@@ -38561,7 +38561,7 @@ msgstr "值为\"None\"表示公共客户端。在此情况下，客户端密钥�
 
 #: frappe/public/js/print_format_builder/components/inspector/BarcodeRows.vue:33
 msgid "Value text"
-msgstr ""
+msgstr "显示条码文字"
 
 #. Label of the value_to_validate (Data) field in DocType 'Onboarding Step'
 #: frappe/desk/doctype/onboarding_step/onboarding_step.json:124
@@ -43863,4 +43863,20 @@ msgstr "冻结"
 
 msgid "Unfreeze"
 msgstr "取消冻结"
+
+#: frappe/public/js/print_format_builder/components/inspector/TableFieldInspector.vue
+msgid "Display as"
+msgstr "显示方式"
+
+#: frappe/public/js/print_format_builder/components/inspector/TableFieldInspector.vue
+msgid "Barcode width"
+msgstr "条码宽度"
+
+#: frappe/public/js/print_format_builder/components/inspector/TableFieldInspector.vue
+msgid "Table column barcodes"
+msgstr "子表列条码"
+
+#: frappe/public/js/print_format_builder/components/inspector/TableFieldInspector.vue
+msgid "Invalid barcode format"
+msgstr "无效的条码格式"
 

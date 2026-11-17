@@ -40,7 +40,22 @@ psycopg2.extensions.register_type(DEC2FLOAT)
 
 LOCATE_SUB_PATTERN = re.compile(r"locate\(([^,]+),([^)]+)(\)?)\)", flags=re.IGNORECASE)
 LOCATE_QUERY_PATTERN = re.compile(r"locate\(", flags=re.IGNORECASE)
-PG_TRANSFORM_PATTERN = re.compile(r"([=><]+)\s*([+-]?\d+)(\.0)?(?![a-zA-Z\.\d])")
+# Keep literal data and comments intact when quoting integer comparisons.
+# Adapted from upstream #46583 without the psycopg 3 driver changes.
+PG_TRANSFORM_PATTERN = re.compile(
+	r"""
+	  (?P<skip>
+	      (?<!\w)[eE]'(?:[^'\\]|''|\\.)*'
+	    | '(?:[^']|'')*'
+	    | "(?:[^"]|"")*"
+	    | \$(?P<tag>\w*)\$.*?\$(?P=tag)\$
+	    | --[^\n]*
+	    | /\*.*?\*/
+	  )
+	| (?P<operator>[=><]+)\s*(?P<integer>[+-]?\d+)(?:\.0)?(?![a-zA-Z.\d])
+	""",
+	flags=re.IGNORECASE | re.DOTALL | re.VERBOSE,
+)
 FROM_TAB_PATTERN = re.compile(r"from tab([\w-]*)", flags=re.IGNORECASE)
 
 
@@ -101,10 +116,9 @@ class PostgresExceptionUtil:
 
 	@staticmethod
 	def is_unique_key_violation(e):
-		return (
-			getattr(e, "pgcode", None) == UNIQUE_VIOLATION
-			and not PostgresDatabase.is_primary_key_violation(e)
-		)
+		return getattr(
+			e, "pgcode", None
+		) == UNIQUE_VIOLATION and not PostgresDatabase.is_primary_key_violation(e)
 
 	@staticmethod
 	def is_duplicate_fieldname(e):
@@ -547,7 +561,12 @@ def modify_query(query):
 	# >>> re.sub(r"([=><]+)\s*([+-]?\d+)(\.0)?(?![a-zA-Z\.\d])", r"\1 '\2'", query)
 	# 	"c='abcd' , a >= '45', b = '-45', c = '40', d= '4500', e=3500.53, f=40psdfsd, g= '9092094312', h=12.00023
 
-	return PG_TRANSFORM_PATTERN.sub(r"\1 '\2'", query)
+	def quote_integer(match: re.Match) -> str:
+		if (skipped := match.group("skip")) is not None:
+			return skipped
+		return f"{match.group('operator')} '{match.group('integer')}'"
+
+	return PG_TRANSFORM_PATTERN.sub(quote_integer, query)
 
 
 def modify_values(values):

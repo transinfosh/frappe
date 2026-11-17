@@ -180,6 +180,11 @@ def typst_blockers(print_format, layout) -> list[str]:
 				styled_fields.append(node.get("label") or node.get("fieldname") or "?")
 		colors.extend(c for c in _unsafe_colors(node) if c not in colors)
 		fieldtype_reason = BLOCKER_FIELDTYPES.get(node.get("fieldtype"))
+		if node.get("fieldtype") == "Table" and any(
+			col.get("barcode_format") not in (None, "", "QR") for col in node.get("table_columns") or []
+		):
+			if _("Barcode that is not a QR code") not in blockers:
+				blockers.append(_("Barcode that is not a QR code"))
 		reason = (
 			(_(fieldtype_reason) if fieldtype_reason else None)
 			or _barcode_blocker(node, print_format)
@@ -1283,6 +1288,14 @@ class TypstEmitter:
 
 	def _table_cell(self, row, col) -> str:
 		from frappe.utils.print_format_generator import format_field_value
+
+		if col.get("barcode_format"):
+			cell = (col.get("_barcode_cells") or {}).get(str(row.idx)) or {}
+			if cell.get("error"):
+				return f"#text({q(cell['error'])})"
+			return self._barcode(
+				{"_qr_data_uri": cell.get("qr"), "width": f"{col.get('barcode_width', 100)}px"}
+			)
 
 		merged = col.get("merged_fields")
 		if merged:

@@ -702,6 +702,28 @@ class TestDB(IntegrationTestCase):
 		)
 
 	@run_only_if(db_type_is.POSTGRES)
+	def test_modify_query_preserves_quoted_data(self):
+		from frappe.database.postgres.database import modify_query
+
+		for fragment in (
+			"'a=1'",
+			"'x\\'') OR 1=1 -- '",
+			'"field=1"',
+			"$$a=1$$",
+			"$body$a=1$body$",
+			"E'a\\'=1'",
+			"/* a=1 */ 1",
+			"1 -- a=1\n",
+		):
+			with self.subTest(fragment=fragment):
+				self.assertEqual(
+					modify_query(f"SELECT {fragment} WHERE 1=1"), f"SELECT {fragment} WHERE 1= '1'"
+				)
+
+		value = "x\\') OR 1=1 -- "
+		self.assertEqual(frappe.db.sql("SELECT " + frappe.db.escape(value, percent=False))[0][0], value)
+
+	@run_only_if(db_type_is.POSTGRES)
 	def test_modify_values(self):
 		from frappe.database.postgres.database import modify_values
 

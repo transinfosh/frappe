@@ -246,14 +246,13 @@ class TestSidebarBoot(IntegrationTestCase):
 			self.assertIn(row.name, payload)
 
 	def test_resolution_walks_modules_not_rows(self):
-		"""The set being resolved is the site's modules, and the modules that have a row are a subset
-		of it, so nothing the old row-walk reached is dropped by the switch and the walk is no longer
-		bounded by which rows exist.
+		"""Navigation-bearing modules with rows remain in the navigable module set.
 
-		The row is staged: nothing ships a `Sidebar`, so on a stock site the old walk had nothing to
-		reach and the comparison would hold vacuously.
-
+		Code-only modules deliberately delegate navigation to their heirs even when a legacy row
+		still exists. The staged row also covers a module that directly supplies navigation.
 		"""
+		from frappe.utils.modules import get_code_only_modules
+
 		with sidebarless_module("Test Row Backed Module") as rowed_module:
 			with system_write():
 				frappe.get_doc({"doctype": "Sidebar", "module": rowed_module, "title": "Rowed"}).insert(
@@ -268,7 +267,7 @@ class TestSidebarBoot(IntegrationTestCase):
 				for row in frappe.get_all("Sidebar", fields=["module"])
 				if frappe.db.exists("Module Def", row.module)
 			}
-			row_backed = set(get_visible_modules(list(row_backed)))
+			row_backed = set(get_visible_modules(list(row_backed))) - get_code_only_modules()
 			self.assertIn(rowed_module, row_backed, "sanity: the staged row is visible")
 			self.assertTrue(row_backed <= modules, f"{row_backed - modules} would be dropped by the switch")
 			# The payload is keyed by shell, so it must stay inside the modules those shells

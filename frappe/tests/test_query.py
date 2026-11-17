@@ -3073,7 +3073,6 @@ class TestQuery(IntegrationTestCase):
 	def test_drop_unique_constraint_and_indexes_for_deleted_fields_postgres(self):
 		# test for unique index backed by constraint at field creation time
 		trial_dt = new_doctype(
-			"Trial Doctype",
 			fields=[
 				{
 					"fieldname": "field_one",

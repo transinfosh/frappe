@@ -143,6 +143,13 @@ export function typst_blockers_client(print_format, layout, letterhead) {
 					add(__("Barcode that is not a QR code"));
 			}
 		}
+		if (
+			node.fieldtype === "Table" &&
+			(node.table_columns || []).some(
+				(col) => col.barcode_format && col.barcode_format !== "QR"
+			)
+		)
+			add(__("Barcode that is not a QR code"));
 		if (node.fieldtype === "Image" && /^https?:\/\//.test(node.image_url || ""))
 			add(__("Image loaded from a web address"));
 		for (const key of ["label_color", "value_color"]) {
@@ -184,6 +191,7 @@ export function legacy_blockers_client(print_format, layout, letterhead) {
 			)
 				add(__("Table styling"));
 			for (const col of node.table_columns || []) {
+				if (col.barcode_format) add(__("Table column barcodes"));
 				if (col.merged_fields?.length) add(__("Merged table columns"));
 				if ((col.column_condition || "").trim()) add(__("Table column conditions"));
 			}
@@ -379,6 +387,10 @@ export function setDragging(active) {
 }
 
 const TABLE_COLUMN_PLUCK_KEYS = [
+	"barcode_format",
+	"barcode_field",
+	"barcode_width",
+	"barcode_show_text",
 	"label",
 	"fieldname",
 	"fieldtype",

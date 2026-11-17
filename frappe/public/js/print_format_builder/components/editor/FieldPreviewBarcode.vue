@@ -16,8 +16,12 @@
 	<span v-else-if="barcode_raw_value && format !== 'QR'" class="text-muted">{{
 		__("Invalid value for {0}", [format || "CODE128"])
 	}}</span>
-	<span v-else-if="!df.custom" class="text-muted">{{ __("No value to encode") }}</span>
-	<span v-else class="text-muted">{{ __("No barcode value — set one in the panel") }}</span>
+	<span v-else-if="!qr_error && !df.custom" class="text-muted">{{
+		__("No value to encode")
+	}}</span>
+	<span v-else-if="!qr_error" class="text-muted">{{
+		__("No barcode value — set one in the panel")
+	}}</span>
 </template>
 
 <script setup>
@@ -30,6 +34,7 @@ const store = inject("$store");
 const preview_doc = computed(() => store.preview_doc.value);
 
 let qr_src = ref(null);
+let qr_error = ref(false);
 
 // a Barcode docfield whose options ask for a qr code renders as one — the
 // field decides, there is no format control
@@ -78,7 +83,7 @@ let barcode_svg = computed(() => {
 			format: format.value || "CODE128",
 			displayValue: props.df.show_text !== false,
 			height: 40,
-			margin: 0,
+			margin: props.df.barcode_margin || 0,
 		});
 		svg.setAttribute("width", "100%");
 		return svg.outerHTML;
@@ -90,17 +95,22 @@ let barcode_svg = computed(() => {
 watch(
 	[barcode_raw_value, format],
 	frappe.utils.debounce(async ([value, format]) => {
+		qr_src.value = null;
+		qr_error.value = false;
 		if (format !== "QR" || !value) {
-			qr_src.value = null;
 			return;
 		}
 		try {
-			const r = await frappe.call("frappe.utils.print_format_generator.get_qr_code", {
-				value: String(value),
+			const r = await frappe.call({
+				method: "frappe.utils.print_format_generator.get_qr_code",
+				args: { value: String(value) },
+				silent: true,
 			});
 			qr_src.value = r.message || null;
-		} catch {
+			qr_error.value = !qr_src.value;
+		} catch (error) {
 			qr_src.value = null;
+			qr_error.value = error?.responseJSON?.exc_type === "ValidationError";
 		}
 	}, 300),
 	{ immediate: true }

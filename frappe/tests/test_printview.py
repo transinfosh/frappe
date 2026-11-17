@@ -9,6 +9,11 @@ EXTRA_TEST_RECORD_DEPENDENCIES = ["User"]
 
 
 class PrintViewTest(IntegrationTestCase):
+	def test_print_filename_accepts_numeric_document_name(self):
+		from frappe.www.printview import get_print_filename
+
+		self.assertEqual(get_print_filename(frappe._dict(name=34)), "34")
+
 	def test_print_filename_uses_docname_not_title_field(self):
 		from frappe.www.printview import get_context
 

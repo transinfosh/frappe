@@ -71,6 +71,8 @@ def legacy_blockers(print_format, layout) -> list[str]:
 					continue
 				if col.get("merged_fields"):
 					add(_("Merged table columns"))
+				if col.get("barcode_format"):
+					add(_("Table column barcodes"))
 				if (col.get("column_condition") or "").strip():
 					add(_("Table column conditions"))
 	if styled_fields:
