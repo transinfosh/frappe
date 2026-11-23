@@ -12,6 +12,7 @@ from werkzeug.exceptions import NotFound
 import frappe
 import frappe.utils
 from frappe import oauth
+from frappe.integrations.oauth2_signing import RS256_KEY_CONFIG, get_rs256_issuer, get_rs256_signing_key
 from frappe.integrations.utils import (
 	OAuth2DynamicClientMetadata,
 	create_new_oauth_client,
@@ -19,6 +20,7 @@ from frappe.integrations.utils import (
 	validate_dynamic_client_metadata,
 )
 from frappe.oauth import (
+	OAuthTokenRequestValidator,
 	OAuthWebRequestValidator,
 	generate_json_error_response,
 	get_server_url,
@@ -33,6 +35,7 @@ ENDPOINTS = {
 	"authorization_endpoint": "/api/method/frappe.integrations.oauth2.authorize",
 	"introspection_endpoint": "/api/method/frappe.integrations.oauth2.introspect_token",
 }
+TOKEN_AUTH_METHODS = ["none", "client_secret_basic", "client_secret_post"]
 
 
 def get_oauth_server():
@@ -168,14 +171,17 @@ def authorize(**kwargs):
 def get_token(*args, **kwargs):
 	try:
 		r = frappe.request
-		_headers, body, _status = get_oauth_server().create_token_response(
-			r.url, r.method, r.form, r.headers, frappe.flags.oauth_credentials
+		server = WebApplicationServer(OAuthTokenRequestValidator())
+		_headers, body, status = server.create_token_response(
+			r.url, r.method, list(r.form.items(multi=True)), r.headers, frappe.flags.oauth_credentials
 		)
 		body = frappe._dict(json.loads(body))
 
 		if body.error:
 			frappe.local.response = body
-			frappe.local.response["http_status_code"] = 400
+			frappe.local.response["http_status_code"] = status
+			if status == 401 and r.headers.get("Authorization", "").partition(" ")[0].lower() == "basic":
+				frappe.local.response_headers["WWW-Authenticate"] = 'Basic realm="OAuth"'
 			return
 
 		frappe.local.response = body
@@ -195,7 +201,7 @@ def revoke_token(*args, **kwargs):
 			body=r.form,
 			http_method=r.method,
 		)
-	except (FatalClientError, OAuth2Error):
+	except FatalClientError, OAuth2Error:
 		pass
 
 	# status_code must be 200
@@ -222,30 +228,38 @@ def openid_profile(*args, **kwargs):
 
 
 def get_openid_configuration():
-	response = Response()
-	response.mimetype = "application/json"
-	frappe_server_url = get_server_url()
-	response.data = frappe.as_json(
-		{
-			"issuer": frappe_server_url,
-			"authorization_endpoint": f"{frappe_server_url}{ENDPOINTS['authorization_endpoint']}",
-			"token_endpoint": f"{frappe_server_url}{ENDPOINTS['token_endpoint']}",
-			"userinfo_endpoint": f"{frappe_server_url}{ENDPOINTS['userinfo_endpoint']}",
-			"revocation_endpoint": f"{frappe_server_url}{ENDPOINTS['revocation_endpoint']}",
-			"introspection_endpoint": f"{frappe_server_url}{ENDPOINTS['introspection_endpoint']}",
-			"response_types_supported": [
-				"code",
-				"token",
-				"code id_token",
-				"code token id_token",
-				"id_token",
-				"id_token token",
-			],
-			"subject_types_supported": ["public"],
-			"id_token_signing_alg_values_supported": ["HS256"],
-		}
-	)
-	return response
+	rs256_issuer = get_rs256_issuer() if frappe.conf.get(RS256_KEY_CONFIG) else None
+	frappe_server_url = rs256_issuer or get_server_url()
+	metadata = {
+		"issuer": frappe_server_url,
+		"authorization_endpoint": f"{frappe_server_url}{ENDPOINTS['authorization_endpoint']}",
+		"token_endpoint": f"{frappe_server_url}{ENDPOINTS['token_endpoint']}",
+		"userinfo_endpoint": f"{frappe_server_url}{ENDPOINTS['userinfo_endpoint']}",
+		"revocation_endpoint": f"{frappe_server_url}{ENDPOINTS['revocation_endpoint']}",
+		"introspection_endpoint": f"{frappe_server_url}{ENDPOINTS['introspection_endpoint']}",
+		"response_types_supported": [
+			"code",
+			"token",
+			"code id_token",
+			"code token id_token",
+			"id_token",
+			"id_token token",
+		],
+		"subject_types_supported": ["public"],
+		"id_token_signing_alg_values_supported": ["HS256"],
+		"token_endpoint_auth_methods_supported": TOKEN_AUTH_METHODS,
+	}
+	if rs256_issuer and get_rs256_signing_key():
+		metadata["id_token_signing_alg_values_supported"].append("RS256")
+		metadata["jwks_uri"] = f"{frappe_server_url}/.well-known/jwks.json"
+	return Response(frappe.as_json(metadata), mimetype="application/json")
+
+
+def get_openid_jwks():
+	key = get_rs256_signing_key() if get_rs256_issuer() else None
+	if not key:
+		raise NotFound
+	return Response(frappe.as_json({"keys": [key.public_jwk]}), mimetype="application/json")
 
 
 @frappe.whitelist(allow_guest=True, methods=["POST"])
@@ -292,6 +306,8 @@ def introspect_token(token: str, token_type_hint: str | None = None):
 
 def handle_wellknown(path: str):
 	"""Path handler for GET requests to /.well-known/ endpoints. Invoked in app.py"""
+	if path == "/.well-known/jwks.json":
+		return get_openid_jwks()
 
 	if path.startswith("/.well-known/openid-configuration"):
 		return get_openid_configuration()
@@ -341,7 +357,7 @@ def _get_authorization_server_metadata():
 		response_types_supported=["code"],
 		response_modes_supported=["query"],
 		grant_types_supported=["authorization_code", "refresh_token"],
-		token_endpoint_auth_methods_supported=["none", "client_secret_basic"],
+		token_endpoint_auth_methods_supported=TOKEN_AUTH_METHODS,
 		service_documentation="https://docs.frappe.io/framework/user/en/guides/integration/how_to_set_up_oauth#add-a-client-app",
 		revocation_endpoint=f"{issuer}{ENDPOINTS['revocation_endpoint']}",
 		revocation_endpoint_auth_methods_supported=["client_secret_basic"],

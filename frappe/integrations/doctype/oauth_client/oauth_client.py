@@ -7,8 +7,10 @@ import time
 import frappe
 import frappe.utils
 from frappe import _
+from frappe.integrations.oauth2_signing import get_rs256_issuer, get_rs256_signing_key
 from frappe.model.document import Document
 from frappe.permissions import SYSTEM_USER_ROLE
+from frappe.utils import cstr
 
 
 class OAuthClient(Document):
@@ -47,6 +49,13 @@ class OAuthClient(Document):
 		if not self.client_secret:
 			self.client_secret = frappe.generate_hash(length=10)
 		self.validate_grant_and_response()
+		if cstr(self.get("id_token_signing_alg")).strip() == "RS256":
+			if not get_rs256_issuer():
+				frappe.throw(
+					_("Set the Frappe Social Login Key Base URL to the HTTPS issuer before enabling RS256.")
+				)
+			if not get_rs256_signing_key():
+				frappe.throw(_("Configure a valid RSA signing key for this site before enabling RS256."))
 		self.add_default_role()
 
 	def validate_grant_and_response(self):

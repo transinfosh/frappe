@@ -142,7 +142,7 @@ class LoginManager:
 				self.make_session(resume=True)
 				self.get_user_info()
 				self.set_user_info(resume=True)
-			except (AttributeError, frappe.DoesNotExistError):
+			except AttributeError, frappe.DoesNotExistError:
 				self.user = "Guest"
 				self.get_user_info()
 				self.make_session()
@@ -637,8 +637,9 @@ def validate_auth():
 	"""
 	authorization_header = frappe.get_request_header("Authorization", "").split(" ")
 	user_before_auth = frappe.session.user
+	oauth_basic_auth = _is_oauth_token_basic_auth(authorization_header)
 
-	if len(authorization_header) == 2:
+	if len(authorization_header) == 2 and not oauth_basic_auth:
 		validate_oauth(authorization_header)
 		validate_auth_via_api_keys(authorization_header)
 
@@ -646,7 +647,7 @@ def validate_auth():
 
 	# If login via bearer, basic or keypair didn't work then authentication failed and we
 	# should terminate here.
-	if len(authorization_header) == 2 and frappe.session.user in ("", "Guest"):
+	if len(authorization_header) == 2 and not oauth_basic_auth and frappe.session.user in ("", "Guest"):
 		raise frappe.AuthenticationError
 
 	# `restrict_ip` is enforced for interactive logins in `LoginManager.post_login` and for
@@ -655,6 +656,32 @@ def validate_auth():
 	# and bearer tokens bypass the user's IP restrictions entirely.
 	if frappe.session.user != user_before_auth and frappe.session.user not in ("", "Guest"):
 		validate_ip_address(frappe.session.user)
+
+
+def _is_oauth_token_basic_auth(authorization_header: list[str]) -> bool:
+	if authorization_header[0].lower() != "basic" or frappe.request.method != "POST":
+		return False
+
+	from frappe.integrations.oauth2 import ENDPOINTS
+
+	token_method = ENDPOINTS["token_endpoint"].rsplit("/", 1)[1]
+	method = frappe.form_dict.get("cmd")
+	if not method:
+		path = frappe.request.path.removesuffix("/")
+		method = next(
+			(
+				path.removeprefix(prefix)
+				for prefix in ("/api/method/", "/api/v1/method/", "/api/v2/method/")
+				if path.startswith(prefix)
+			),
+			None,
+		)
+	if method != token_method or frappe.override_whitelisted_method(method) != token_method:
+		return False
+
+	from frappe.core.doctype.server_script.server_script_utils import get_server_script_map
+
+	return token_method not in get_server_script_map().get("_api", {})
 
 
 def validate_oauth(authorization_header):
@@ -719,7 +746,7 @@ def validate_auth_via_api_keys(authorization_header):
 			_("Failed to decode token, please provide a valid base64-encoded token."),
 			frappe.InvalidAuthorizationToken,
 		)
-	except (AttributeError, TypeError, ValueError):
+	except AttributeError, TypeError, ValueError:
 		pass
 
 

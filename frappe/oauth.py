@@ -1,14 +1,23 @@
 import base64
+import binascii
 import datetime
 import hashlib
+import hmac
 import re
-from urllib.parse import urljoin, urlparse
+from urllib.parse import unquote_plus, urljoin, urlparse
 
 from oauthlib.common import Request
+from oauthlib.oauth2 import ServerError
 from oauthlib.openid import RequestValidator
 
 import frappe
 from frappe.integrations.doctype.oauth_client.oauth_client import OAuthClient
+from frappe.integrations.oauth2_signing import (
+	RS256_KEY_CONFIG,
+	get_rs256_issuer,
+	get_rs256_signing_key,
+	normalize_rs256_issuer,
+)
 from frappe.utils.data import cstr, get_system_timezone, now_datetime
 
 
@@ -44,6 +53,16 @@ class OAuthWebRequestValidator(RequestValidator):
 		# Prefer your clients to pre register a redirect uri rather than
 		# supplying one on each authorization request.
 		return frappe.db.get_value("OAuth Client", client_id, "default_redirect_uri")
+
+	def is_pkce_required(self, client_id, request) -> bool:
+		return getattr(request.client, "token_endpoint_auth_method", None) == "None"
+
+	def get_code_challenge(self, code, request):
+		return frappe.db.get_value("OAuth Authorization Code", code, "code_challenge")
+
+	def get_code_challenge_method(self, code, request):
+		method = frappe.db.get_value("OAuth Authorization Code", code, "code_challenge_method")
+		return "S256" if method == "s256" else method
 
 	def validate_scopes(self, client_id, scopes, client, request, *args, **kwargs):
 		# Is the client allowed to access the requested scopes?
@@ -295,25 +314,20 @@ class OAuthWebRequestValidator(RequestValidator):
 		- Refresh Token Grant
 		"""
 
-		otoken = frappe.get_doc(
+		user = frappe.db.get_value(
 			"OAuth Bearer Token",
-			{"refresh_token": refresh_token, "status": "Active"},
+			{"refresh_token": refresh_token, "client": client.client_id, "status": "Active"},
+			"user",
 		)
-
-		if not otoken:
+		if not user:
 			return False
-		else:
-			# Set request.user to the user associated with the refresh token
-			request.user = otoken.user
-			return True
+		request.user = user
+		return True
 
 	# OpenID Connect
 
 	def finalize_id_token(self, id_token, token, token_handler, request):
 		import jwt
-
-		# Check whether frappe server URL is set
-		id_token_header = {"typ": "jwt", "alg": "HS256"}
 
 		user = frappe.get_doc("User", request.user)
 
@@ -330,11 +344,25 @@ class OAuthWebRequestValidator(RequestValidator):
 		if "openid" in request.scopes:
 			id_token.update(userinfo)
 
+		algorithm = request.client.get("id_token_signing_alg") or "HS256"
+		headers = {"typ": "jwt"}
+		key = request.client.client_secret
+		if algorithm == "RS256":
+			issuer = get_rs256_issuer()
+			signing_key = get_rs256_signing_key() if issuer else None
+			if not signing_key:
+				raise ServerError(
+					status_code=503, description=frappe._("The OIDC signing key is temporarily unavailable.")
+				)
+			id_token["iss"] = issuer
+			key = signing_key.private_key
+			headers["kid"] = signing_key.public_jwk["kid"]
+
 		id_token_encoded = jwt.encode(
 			payload=id_token,
-			key=request.client.client_secret,
-			algorithm="HS256",
-			headers=id_token_header,
+			key=key,
+			algorithm=algorithm,
+			headers=headers,
 		)
 
 		return frappe.safe_decode(id_token_encoded)
@@ -346,13 +374,12 @@ class OAuthWebRequestValidator(RequestValidator):
 		return None
 
 	def get_authorization_code_scopes(self, client_id, code, redirect_uri, request):
-		scope = frappe.get_value("OAuth Client", client_id, "scopes")
-		if not scope:
-			scope = []
-		else:
-			scope = scope.split(get_url_delimiter())
-
-		return scope
+		# OAuthlib selects the grant before authenticating the client. A Basic
+		# token request may omit client_id from its form body.
+		scopes = frappe.db.get_value(
+			"OAuth Authorization Code", {"name": code, "validity": "Valid"}, "scopes"
+		)
+		return scopes.split() if scopes else []
 
 	def get_jwt_bearer_token(self, token, token_handler, request):
 		now = datetime.datetime.now()
@@ -449,50 +476,104 @@ class OAuthWebRequestValidator(RequestValidator):
 		"""
 		import jwt
 
-		if id_token_hint:
-			try:
-				user = None
-				payload = jwt.decode(
-					id_token_hint,
-					algorithms=["HS256"],
-					options={
-						"verify_signature": False,
-						"verify_aud": False,
-					},
+		if not id_token_hint:
+			return frappe.session.user != "Guest"
+		if not request.client_id or frappe.session.user == "Guest":
+			return False
+
+		client = frappe.get_value(
+			"OAuth Client", request.client_id, ["client_secret", "id_token_signing_alg"], as_dict=True
+		)
+		if not client:
+			return False
+		algorithm = client.id_token_signing_alg or "HS256"
+		key = client.client_secret
+		issuer = None
+		if algorithm == "RS256":
+			issuer = get_rs256_issuer()
+			signing_key = get_rs256_signing_key() if issuer else None
+			if not signing_key:
+				return False
+			key = signing_key.private_key.public_key()
+
+		try:
+			payload = jwt.decode(
+				id_token_hint,
+				key=key,
+				audience=request.client_id,
+				issuer=issuer,
+				algorithms=[algorithm],
+				options={"verify_exp": False, "require": ["sub"]},
+			)
+		except jwt.PyJWTError, TypeError:
+			return False
+		user = frappe.db.get_value(
+			"User Social Login", {"userid": payload["sub"], "provider": "frappe"}, "parent"
+		)
+		return user == frappe.session.user
+
+
+class OAuthTokenRequestValidator(OAuthWebRequestValidator):
+	def authenticate_client(self, request: Request, *args, **kwargs) -> bool:
+		authorization = request.headers.get("Authorization", "")
+		if "client_secret" in request.duplicate_params or "client_id" in request.duplicate_params:
+			return False
+		if authorization:
+			basic = _get_oauth_basic_credentials(authorization)
+			if not basic or request.client_secret is not None:
+				return False
+			client_id, secret = basic
+			if request.client_id and request.client_id != client_id:
+				return False
+		else:
+			client_id, secret = request.client_id, request.client_secret
+			if (
+				not client_id
+				and secret is None
+				and request.grant_type == "refresh_token"
+				and request.refresh_token
+			):
+				# Existing public clients may refresh without submitting their client ID.
+				client_id = frappe.db.get_value(
+					"OAuth Bearer Token",
+					{"refresh_token": request.refresh_token, "status": "Active"},
+					"client",
 				)
-				client_id, client_secret = frappe.get_value(
-					"OAuth Client",
-					payload.get("aud"),
-					["client_id", "client_secret"],
-				)
+		if not client_id:
+			return False
+		try:
+			client = frappe.get_doc("OAuth Client", client_id)
+		except frappe.DoesNotExistError:
+			frappe.clear_last_message()
+			return False
 
-				if payload.get("sub") and client_id and client_secret:
-					user = frappe.db.get_value(
-						"User Social Login",
-						{"userid": payload.get("sub"), "provider": "frappe"},
-						"parent",
-					)
-					user = frappe.get_doc("User", user)
-					verified_payload = jwt.decode(
-						id_token_hint,
-						key=client_secret,
-						audience=client_id,
-						algorithms=["HS256"],
-						options={
-							"verify_exp": False,
-						},
-					)
-
-					if verified_payload:
-						return user.name == frappe.session.user
-
-			except Exception:
+		method = client.token_endpoint_auth_method or "Client Secret Basic"
+		if method == "None":
+			if authorization or secret is not None:
+				return False
+		else:
+			# Existing Frappe social login sends the client secret in the form even for default Basic clients.
+			if method != "Client Secret Basic" and (method != "Client Secret Post" or authorization):
+				return False
+			if not secret or not client.client_secret:
+				return False
+			if not hmac.compare_digest(secret.encode(), client.client_secret.encode()):
 				return False
 
-		elif frappe.session.user != "Guest":
-			return True
+		request.client = client.as_dict()
+		request.client_id = client.name
+		return True
 
-		return False
+
+def _get_oauth_basic_credentials(authorization: str) -> tuple[str, str] | None:
+	scheme, _, value = authorization.partition(" ")
+	if scheme.lower() != "basic" or not value:
+		return None
+	try:
+		client_id, secret = base64.b64decode(value, validate=True).decode().split(":", 1)
+		return unquote_plus(client_id, errors="strict"), unquote_plus(secret, errors="strict")
+	except binascii.Error, UnicodeError, ValueError:
+		return None
 
 
 def calculate_at_hash(access_token, hash_alg):
@@ -576,6 +657,11 @@ def generate_json_error_response(e):
 
 
 def get_server_url():
+	base_url = frappe.get_value("Social Login Key", "frappe", "base_url")
+	if base_url:
+		# OIDC discovery and both token algorithms must use the same issuer on an RS256 site.
+		if frappe.conf.get(RS256_KEY_CONFIG):
+			return normalize_rs256_issuer(base_url) or base_url
+		return base_url
 	request_url = urlparse(frappe.request.url)
-	request_url = f"{request_url.scheme}://{request_url.netloc}"
-	return frappe.get_value("Social Login Key", "frappe", "base_url") or request_url
+	return f"{request_url.scheme}://{request_url.netloc}"

@@ -31,6 +31,7 @@
   "sb_advanced",
   "grant_type",
   "token_endpoint_auth_method",
+  "id_token_signing_alg",
   "cb_2",
   "response_type"
  ],
@@ -198,6 +199,14 @@
    "fieldtype": "Select",
    "label": "Token Endpoint Auth Method",
    "options": "Client Secret Basic\nClient Secret Post\nNone"
+  },
+  {
+   "default": "HS256",
+   "fieldname": "id_token_signing_alg",
+   "fieldtype": "Select",
+   "label": "ID Token Signing Algorithm",
+   "options": "HS256,Shared Secret (HS256)\nRS256,Public Key (RS256)",
+   "options_has_label": 1
   }
  ],
  "grid_page_length": 50,
@@ -206,6 +215,7 @@
  "modified_by": "Administrator",
  "module": "Integrations",
  "name": "OAuth Client",
+ "title": "OAuth Client",
  "owner": "Administrator",
  "permissions": [
   {

@@ -43880,3 +43880,26 @@ msgstr "子表列条码"
 msgid "Invalid barcode format"
 msgstr "无效的条码格式"
 
+#: frappe/integrations/doctype/oauth_client/oauth_client.json
+msgid "ID Token Signing Algorithm"
+msgstr "ID 令牌签名算法"
+
+#: frappe/integrations/doctype/oauth_client/oauth_client.json
+msgid "Shared Secret (HS256)"
+msgstr "共享密钥（HS256）"
+
+#: frappe/integrations/doctype/oauth_client/oauth_client.json
+msgid "Public Key (RS256)"
+msgstr "公钥（RS256）"
+
+#: frappe/integrations/doctype/oauth_client/oauth_client.py
+msgid "Set the Frappe Social Login Key Base URL to the HTTPS issuer before enabling RS256."
+msgstr "启用 RS256 前，请将 Frappe 社交登录密钥的基础 URL 设为 HTTPS 签发地址。"
+
+#: frappe/integrations/doctype/oauth_client/oauth_client.py
+msgid "Configure a valid RSA signing key for this site before enabling RS256."
+msgstr "启用 RS256 前，请为本站点配置有效的 RSA 签名密钥。"
+
+#: frappe/oauth.py
+msgid "The OIDC signing key is temporarily unavailable."
+msgstr "OIDC 签名密钥暂时不可用。"
