@@ -139,6 +139,30 @@ class TestLinkedWith(IntegrationTestCase):
 		child_record.delete()
 		parent_record.delete()
 
+	def test_get_submitted_linked_docs_with_circular_autoincrement_links(self):
+		doctype = f"Test Linked Numbered {frappe.generate_hash(length=6)}"
+		new_doctype(
+			doctype,
+			autoname="autoincrement",
+			is_submittable=1,
+			fields=[{"fieldname": "related_document", "fieldtype": "Link", "options": doctype}],
+		).insert()
+		self.addCleanup(frappe.delete_doc, "DocType", doctype)
+
+		frappe.db.savepoint("linked_numbered_documents")
+		try:
+			root = frappe.new_doc(doctype).insert()
+			linked = frappe.new_doc(doctype)
+			linked.related_document = str(root.name)
+			linked.insert().submit()
+			root.related_document = str(linked.name)
+			root.submit()
+
+			result = linked_with.get_submitted_linked_docs(doctype, str(root.name))
+			self.assertEqual(result["docs"], [{"doctype": doctype, "name": linked.name, "docstatus": 1}])
+		finally:
+			frappe.db.rollback(save_point="linked_numbered_documents")
+
 	def test_check_delete_integrity(self):
 		"""Don't allow deleting cancelled document if amendment exists"""
 		doc = frappe.get_doc({"doctype": "Parent DocType"}).insert()

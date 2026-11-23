@@ -77,6 +77,7 @@ class SubmittableDocumentTree:
 		"""Get all nodes of a tree except the root node (all the nested submitted
 		documents those are present in referencing tables dependent tables).
 		"""
+		seen = {(self.root_doctype, str(self.root_docname))}
 		while self.to_be_visited_documents:
 			next_level_children = defaultdict(list)
 			for parent_dt in list(self.to_be_visited_documents):
@@ -90,10 +91,12 @@ class SubmittableDocumentTree:
 				child_docs = self.get_next_level_children(parent_dt, parent_docs)
 				self.visited_documents[parent_dt].extend(parent_docs)
 				for linked_dt, linked_names in child_docs.items():
-					not_visited_child_docs = set(linked_names) - set(
-						self.visited_documents.get(linked_dt, [])
-					)
-					next_level_children[linked_dt].extend(not_visited_child_docs)
+					for linked_name in linked_names:
+						key = (linked_dt, str(linked_name))
+						if key in seen:
+							continue
+						seen.add(key)
+						next_level_children[linked_dt].append(linked_name)
 
 			self.to_be_visited_documents = next_level_children
 
@@ -344,7 +347,8 @@ def get_referencing_documents(
 	        is enabled.
 	"""
 	from_table = link_info["doctype"]
-	filters = [[link_info["fieldname"], "in", tuple(reference_names)]]
+	# Link fields store text even when the target uses an integer name.
+	filters = [[link_info["fieldname"], "in", tuple(map(str, reference_names))]]
 	if link_info.get("doctype_fieldname"):
 		filters.append([link_info["doctype_fieldname"], "=", reference_doctype])
 
