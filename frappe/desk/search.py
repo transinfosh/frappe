@@ -310,11 +310,17 @@ def validate_ignore_user_permissions(form_doctype: str, link_fieldname: str, lin
 	def _throw(message):
 		frappe.throw(message, title=_('Error validating "Ignore User Permissions"'))
 
+	def enforces_user_permissions(field):
+		return field.fieldname in enforced_fields.get(field.parent, ())
+
 	def can_search(*fields):
-		# a read-only or hidden field has no search box, so only a crafted request names it
-		return not any(field.read_only or field.hidden for field in fields)
+		return not any(
+			field.read_only or field.hidden or enforces_user_permissions(field) for field in fields
+		)
 
 	meta = frappe.get_meta(form_doctype)
+	# A field can be exempt from checking the enclosing record without relaxing its lookup.
+	enforced_fields = frappe.get_hooks("enforce_link_search_user_permissions", {})
 	matched_child_field = None
 	locked_child_field = False
 	for table_field in meta.get_table_fields():
@@ -381,6 +387,9 @@ def validate_ignore_user_permissions(form_doctype: str, link_fieldname: str, lin
 					"Table MultiSelect requires a table with at least one Link field, but none was found in {0}"
 				).format(bold(_(link_field.options)))
 			)
+
+		if enforces_user_permissions(child_link_field):
+			return False
 
 		found_doctype = child_link_field.options
 		if not ignore_user_permissions:

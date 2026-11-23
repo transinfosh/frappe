@@ -735,6 +735,7 @@ class TestSearch(IntegrationTestCase):
 				link_to_target("linked"),
 				link_to_target("amended_from", read_only=1),
 				rows("rows"),
+				rows("members", fieldtype="Table MultiSelect"),
 				{"label": "Value", "fieldname": "value", "fieldtype": "Float"},
 			],
 			permissions=[{"role": "System Manager", "read": 1, "write": 1}],
@@ -785,6 +786,19 @@ class TestSearch(IntegrationTestCase):
 		self.assertEqual(values(child, "linked"), [allowed.name])
 		self.assertEqual(values(locked_form, "member"), [allowed.name])
 		self.assertEqual(values(locked_form, "linked"), [allowed.name])
+		self.assertIn(restricted.name, values(form, "members"))
+
+		get_hooks = frappe.get_hooks
+
+		def get_test_hooks(hook=None, *args, **kwargs):
+			if hook == "enforce_link_search_user_permissions":
+				return {form: ["linked"], child: ["member"]}
+			return get_hooks(hook, *args, **kwargs)
+
+		with patch("frappe.get_hooks", side_effect=get_test_hooks):
+			self.assertEqual(values(form, "linked"), [allowed.name])
+			self.assertEqual(values(form, "member"), [allowed.name])
+			self.assertEqual(values(form, "members"), [allowed.name])
 
 	def test_search_link_ignore_user_permissions_dangling_child_table(self):
 		"""A child table pointing at a deleted doctype should not escape as DoesNotExistError."""
