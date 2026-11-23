@@ -182,6 +182,30 @@ class TestLinkedWith(IntegrationTestCase):
 		self.assertEqual(len(keys), len(set(keys)))
 		self.assertEqual(result["count"], 2)
 
+	def test_get_submitted_linked_docs_with_circular_autoincrement_links(self):
+		doctype = f"Test Linked Numbered {frappe.generate_hash(length=6)}"
+		new_doctype(
+			doctype,
+			autoname="autoincrement",
+			is_submittable=1,
+			fields=[{"fieldname": "related_document", "fieldtype": "Link", "options": doctype}],
+		).insert()
+		self.addCleanup(frappe.delete_doc, "DocType", doctype)
+
+		frappe.db.savepoint("linked_numbered_documents")
+		try:
+			root = frappe.new_doc(doctype).insert()
+			linked = frappe.new_doc(doctype)
+			linked.related_document = str(root.name)
+			linked.insert().submit()
+			root.related_document = str(linked.name)
+			root.submit()
+
+			result = linked_with.get_submitted_linked_docs(doctype, str(root.name))
+			self.assertEqual(result["docs"], [{"doctype": doctype, "name": linked.name, "docstatus": 1}])
+		finally:
+			frappe.db.rollback(save_point="linked_numbered_documents")
+
 	def test_cancel_all_linked_docs_defers_blocked_docs(self):
 		parent = frappe.get_doc({"doctype": "Parent DocType"}).insert().submit()
 		child1 = (

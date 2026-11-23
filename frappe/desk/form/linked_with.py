@@ -71,7 +71,7 @@ def collect_cancellation_blockers(
 		docs.extend([{"doctype": dt, "name": docname, "docstatus": 1} for docname in names])
 
 	# deepest first, so referencing documents get cancelled before the referenced
-	docs.sort(key=lambda doc: tree.depth_by_document[doc["doctype"], doc["name"]], reverse=True)
+	docs.sort(key=lambda doc: tree.depth_by_document[doc["doctype"], str(doc["name"])], reverse=True)
 	return docs, False
 
 
@@ -91,7 +91,7 @@ class SubmittableDocumentTree:
 		# Documents those are yet to be visited for linked documents.
 		self.to_be_visited_documents = {doctype: [name]}
 		self.visited_documents = defaultdict(list)
-		self.depth_by_document = {(doctype, name): 0}
+		self.depth_by_document = {(doctype, str(name)): 0}
 		self.truncated = False
 		self.fetch_limit = None
 
@@ -115,14 +115,12 @@ class SubmittableDocumentTree:
 					self.truncated = True
 					return defaultdict(list)
 				for linked_dt, linked_names in child_docs.items():
-					new_child_docs = (
-						set(linked_names)
-						- set(self.visited_documents.get(linked_dt, []))
-						- set(next_level_children[linked_dt])
-					)
-					next_level_children[linked_dt].extend(new_child_docs)
-					for linked_name in new_child_docs:
-						self.depth_by_document[(linked_dt, linked_name)] = depth
+					for linked_name in linked_names:
+						key = (linked_dt, str(linked_name))
+						if key in self.depth_by_document:
+							continue
+						self.depth_by_document[key] = depth
+						next_level_children[linked_dt].append(linked_name)
 
 			self.to_be_visited_documents = next_level_children
 			if limit and len(self.depth_by_document) - 1 > limit:
@@ -391,7 +389,8 @@ def get_referencing_documents(
 	        is enabled.
 	"""
 	from_table = link_info["doctype"]
-	filters = [[link_info["fieldname"], "in", tuple(reference_names)]]
+	# Link fields store text even when the target uses an integer name.
+	filters = [[link_info["fieldname"], "in", tuple(map(str, reference_names))]]
 	if link_info.get("doctype_fieldname"):
 		filters.append([link_info["doctype_fieldname"], "=", reference_doctype])
 
